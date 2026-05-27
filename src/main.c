@@ -113,6 +113,7 @@ int main(int argc, char *argv[])
 		sim_step(&sim);
 
 		if (mode == DISPLAY_INTERACTIVE) {
+			fprintf(out, "\033[2J\033[H");
 			display_cycle(out, &sim);
 			if (out == stdout) {
 				fprintf(stderr,
