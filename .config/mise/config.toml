@@ -1,0 +1,14 @@
+[tools]
+zig = "0.16.0"
+
+[tasks.build]
+description = "Build the Tomasulo simulator"
+run = "zig build"
+
+[tasks.test]
+description = "Run unit tests"
+run = "zig build test"
+
+[tasks.run]
+description = "Run the simulator with a test input"
+run = "zig build run -- tests/input_basic.txt -b"

@@ -1,0 +1,53 @@
+# Build artifacts
+*.o
+*.out
+*.exe
+/tomasulo
+
+# Zig
+zig-out/
+.zig-cache/
+
+# Build directories
+build/
+bin/
+obj/
+dist/
+
+# Output files
+output.txt
+output*.txt
+resultado*.txt
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.log
+*.bak
+
+# Dependencies
+*.d
+
+# Core dumps
+core
+core.*
+
+# Valgrind
+vgcore.*
+*.memcheck
+
+# Editor backups
+\#*\#
+.\#*
+
+# Reference implementations (don't track in our repo)
+# ac3-tomasulo-cpp/
+# Tomasulo_saidaArquivo.cpp

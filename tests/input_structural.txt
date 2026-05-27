@@ -1,0 +1,26 @@
+# Structural hazard test: more ADD instructions than Add RS
+# With only 1 Add RS, 3rd ADD must stall until the first frees up
+
+CONFIG_BEGIN
+
+CYCLES ADDD 2
+CYCLES SUBD 2
+
+UNITS ADDD 1    # only 1 Add reservation station
+
+CONFIG_END
+
+REG_INIT_BEGIN
+F1 1.0
+F2 2.0
+F3 3.0
+F5 5.0
+F7 7.0
+F9 9.0
+REG_INIT_END
+
+INSTRUCTIONS_BEGIN
+ADDD F10 F1 F2    # F10 = 3
+ADDD F11 F3 F5    # must wait for RS (structural stall)
+ADDD F12 F7 F9    # must wait even longer
+INSTRUCTIONS_END
