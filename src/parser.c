@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Tomasulo Simulator -- Input file parser
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include "parser.h"
 
 #include <ctype.h>

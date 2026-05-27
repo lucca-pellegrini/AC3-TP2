@@ -43,9 +43,9 @@ void display_instructions(FILE *out, const Simulator *sim)
 	for (int i = 0; i < sim->num_instructions; i++) {
 		const Instruction *inst = &sim->instructions[i];
 
-		char dest_buf[8] = "-";
-		char src1_buf[8] = "-";
-		char src2_buf[8] = "-";
+		char dest_buf[16] = "-";
+		char src1_buf[16] = "-";
+		char src2_buf[16] = "-";
 		if (inst->dest >= 0)
 			snprintf(dest_buf, sizeof(dest_buf), "F%d", inst->dest);
 		if (inst->src1 >= 0)
@@ -62,7 +62,7 @@ void display_instructions(FILE *out, const Simulator *sim)
 				snprintf(src2_buf, sizeof(src2_buf), "-");
 		}
 
-		char issue_s[8] = "", exec_s_s[8] = "", exec_e_s[8] = "", write_s[8] = "";
+		char issue_s[16] = "", exec_s_s[16] = "", exec_e_s[16] = "", write_s[16] = "";
 		if (inst->issue_cycle > 0)
 			snprintf(issue_s, sizeof(issue_s), "%d", inst->issue_cycle);
 		if (inst->exec_start > 0)
@@ -130,7 +130,7 @@ void display_rob(FILE *out, const Simulator *sim)
 		if (!e->busy)
 			continue;
 
-		char dest_buf[8] = "Mem";
+		char dest_buf[16] = "Mem";
 		if (e->op != OP_SD && e->dest_reg >= 0)
 			snprintf(dest_buf, sizeof(dest_buf), "F%d", e->dest_reg);
 

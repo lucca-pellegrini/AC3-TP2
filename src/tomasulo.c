@@ -13,7 +13,9 @@
 //   - Write and Commit cannot happen on the same cycle
 //   - Single CDB: at most 1 write-result per cycle
 //
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include "tomasulo.h"
 
 #include <math.h>

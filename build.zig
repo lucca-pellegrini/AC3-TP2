@@ -17,7 +17,7 @@ const c_flags = &.{
     "-std=c23",
     "-Wall",
     "-Wextra",
-    "-Wpedantic",
+    "-pedantic",
     "-D_GNU_SOURCE",
 };
 
