@@ -1211,6 +1211,25 @@ test "parse_input loads structural hazard test file" {
 test "parse_input returns error for nonexistent file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
+    // Temporarily redirect stderr (fd 2) to /dev/null so the parser's
+    // expected error message doesn't pollute test output.
+    const c_stdio = @cImport({
+        @cInclude("stdio.h");
+        @cInclude("unistd.h");
+        @cInclude("fcntl.h");
+    });
+    const saved_stderr = c_stdio.dup(2);
+    const devnull = c_stdio.open("/dev/null", c_stdio.O_WRONLY);
+    if (devnull >= 0) {
+        _ = c_stdio.dup2(devnull, 2);
+        _ = c_stdio.close(devnull);
+    }
+    defer {
+        if (saved_stderr >= 0) {
+            _ = c_stdio.dup2(saved_stderr, 2);
+            _ = c_stdio.close(saved_stderr);
+        }
+    }
     const result = c.parse_input("nonexistent_file.txt", &cfg, &sim);
     try testing.expect(result != 0);
 }

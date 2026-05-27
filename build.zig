@@ -84,9 +84,15 @@ pub fn build(b: *std.Build) void {
 
     const tests = b.addTest(.{
         .root_module = test_mod,
+        .test_runner = .{
+            .path = b.path("src/test_runner.zig"),
+            .mode = .simple,
+        },
     });
 
     const run_tests = b.addRunArtifact(tests);
+    // Force stdio inheritance so our custom runner's output reaches the user.
+    run_tests.stdio = .inherit;
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
 }
