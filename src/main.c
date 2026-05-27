@@ -109,12 +109,14 @@ int main(int argc, char *argv[])
 	// Run simulation
 	const int MAX_CYCLES = 500;
 
+	setvbuf(out, NULL, _IOFBF, 1 << 16); // fully buffered
 	while (!sim_done(&sim) && sim.cycle < MAX_CYCLES) {
 		sim_step(&sim);
 
 		if (mode == DISPLAY_INTERACTIVE) {
 			fprintf(out, "\033[2J\033[H");
 			display_cycle(out, &sim);
+			fflush(stdout);
 			if (out == stdout) {
 				fprintf(stderr,
 					"[cycle %d] Press Enter to continue (q to run all)...",
@@ -130,8 +132,8 @@ int main(int argc, char *argv[])
 		} else if (mode == DISPLAY_BATCH) {
 			display_cycle(out, &sim);
 		}
-		// QUIET: do nothing per cycle
 	}
+	setvbuf(out, NULL, _IOFBF, 0); // Return to line-buffered out
 
 	if (sim.cycle >= MAX_CYCLES && !sim_done(&sim)) {
 		fprintf(out,

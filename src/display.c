@@ -300,7 +300,7 @@ void display_cycle(FILE *out, const Simulator *sim)
 	const char *yellow = C(out, ANSI_BR_YELLOW);
 	const char *reset = C(out, ANSI_RESET);
 
-	fprintf(out, "\n%s%s\u2550\u2550\u2550 %sCycle %d%s%s%s \u2550\u2550\u2550%s\n", bold, cyan,
+	fprintf(out, "%s%s\u2550\u2550\u2550 %sCycle %d%s%s%s \u2550\u2550\u2550%s\n", bold, cyan,
 		yellow, sim->cycle, reset, bold, cyan, reset);
 	display_instructions(out, sim);
 	display_rs(out, sim);
@@ -320,6 +320,7 @@ void display_final(FILE *out, const Simulator *sim)
 	const char *dim = C(out, ANSI_DIM);
 	const char *reset = C(out, ANSI_RESET);
 
+	fprintf(out, "\n");
 	display_separator(out, 78, "SIMULATION COMPLETE");
 	fprintf(out, " %sTotal cycles:%s %s%s%d%s\n", bold, reset, bold, green, sim->cycle, reset);
 	fprintf(out, " %sInstructions:%s %s%s%d%s\n\n", bold, reset, bold, yellow,
