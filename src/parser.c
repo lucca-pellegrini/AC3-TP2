@@ -47,9 +47,11 @@ int parse_register(const char *name)
 	char first = (char)toupper((unsigned char)name[0]);
 	if (first != 'F' && first != 'R')
 		return -1;
+	if (name[1] == '\0') // bare "F" or "R" with no number
+		return -1;
 	char *end;
 	long val = strtol(name + 1, &end, 10);
-	if (*end != '\0' || val < 0 || val >= MAX_FP_REGISTERS)
+	if (end == name + 1 || *end != '\0' || val < 0 || val >= MAX_FP_REGISTERS)
 		return -1;
 	return (int)val;
 }
