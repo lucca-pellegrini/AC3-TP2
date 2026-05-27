@@ -1,0 +1,56 @@
+# DAXPY-style kernel body: Y[i] = a * X[i] + Y[i]
+#
+# This is the canonical scientific-computing inner loop and a
+# textbook Tomasulo example. We unroll one iteration:
+#
+#   L.D   F0, 0(R1)         ; load a       (scalar, reused)
+#   L.D   F2, 0(R2)         ; load X[i]
+#   MUL.D F4, F0, F2        ; a * X[i]
+#   L.D   F6, 0(R3)         ; load Y[i]    (independent of the MUL)
+#   ADD.D F8, F4, F6        ; a*X[i] + Y[i]
+#   S.D   F8, 0(R3)         ; store back into Y[i]
+#
+# The interesting dynamics:
+#   - The three loads can overlap with each other on the load buffers.
+#   - The MUL.D is the long pole; the ADD.D must wait for it.
+#   - The independent L.D F6 can run in parallel with the MUL.
+#   - S.D must wait for ADD.D's result via the CDB before committing.
+#
+# Numerically: a = 2.5, X[i] = 4 (so addr-based load gives 0+200=200,
+# we just pick base values such that the arithmetic is easy to verify).
+#
+# Expected:
+#   F0 = 0  + 100 = 100   (a)
+#   F2 = 0  + 200 = 200   (X[i])
+#   F4 = 100 * 200 = 20000
+#   F6 = 0  + 300 = 300   (Y[i])
+#   F8 = 20000 + 300 = 20300
+
+CONFIG_BEGIN
+
+CYCLES ADDD 2
+CYCLES MULTD 6
+CYCLES LD 2
+CYCLES SD 2
+
+UNITS ADDD 2
+UNITS MULTD 1
+MEM_UNITS LD 3
+MEM_UNITS SD 2
+
+CONFIG_END
+
+REG_INIT_BEGIN
+R1 100
+R2 200
+R3 300
+REG_INIT_END
+
+INSTRUCTIONS_BEGIN
+L.D   F0 0 R1       # load scalar a
+L.D   F2 0 R2       # load X[i]
+MUL.D F4 F0 F2      # a * X[i]
+L.D   F6 0 R3       # load Y[i]  (independent of MUL, can run in parallel)
+ADD.D F8 F4 F6      # a*X[i] + Y[i]
+S.D   F8 0 R3       # store back into Y[i]
+INSTRUCTIONS_END

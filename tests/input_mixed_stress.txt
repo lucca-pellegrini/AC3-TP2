@@ -1,0 +1,65 @@
+# Mixed-workload stress test exercising every functional unit type.
+#
+# The program loads four values, performs a couple of independent
+# multiplies and adds, a divide, a subtract, and finally stores
+# results back to memory. It mixes:
+#
+#   - independent loads (parallel on the load buffers)
+#   - RAW dependencies across unit types (LD -> MUL -> ADD)
+#   - a long-latency DIV running in parallel with shorter ops
+#   - a WAW on F20 (first set by L.D, then overwritten by the final ADD)
+#   - stores waiting on producers
+#
+# Note: in this simulator the integer and FP register files share
+# indices (R2 is the same slot as F2), so we keep the base registers
+# (R30, R31) well away from the FP destinations used below.
+#
+# Computation:
+#   F20 = 0   + 100 = 100      ; L.D F20, 0(R30)
+#   F21 = 8   + 100 = 108      ; L.D F21, 8(R30)
+#   F22 = 16  + 200 = 216      ; L.D F22, 16(R31)
+#   F23 = 24  + 200 = 224      ; L.D F23, 24(R31)
+#   F8  = F20 * F21 = 10800
+#   F10 = F22 * F23 = 48384
+#   F12 = F8  + F10 = 59184
+#   F14 = F10 - F8  = 37584
+#   F16 = F12 / F14 = 1.5747...
+#   F20 = F16 + F21 = 109.5747...   (WAW on F20)
+#   S.D F12, 32(R30) ; store
+#   S.D F20, 40(R30) ; store (must wait for the last ADD)
+
+CONFIG_BEGIN
+
+CYCLES ADDD 2
+CYCLES SUBD 2
+CYCLES MULTD 6
+CYCLES DIVD 20
+CYCLES LD 2
+CYCLES SD 2
+
+UNITS ADDD 3
+UNITS MULTD 2
+MEM_UNITS LD 3
+MEM_UNITS SD 2
+
+CONFIG_END
+
+REG_INIT_BEGIN
+R30 100
+R31 200
+REG_INIT_END
+
+INSTRUCTIONS_BEGIN
+L.D   F20 0  R30
+L.D   F21 8  R30
+L.D   F22 16 R31
+L.D   F23 24 R31
+MUL.D F8  F20 F21
+MUL.D F10 F22 F23
+ADD.D F12 F8  F10
+SUB.D F14 F10 F8
+DIV.D F16 F12 F14
+ADD.D F20 F16 F21    # WAW on F20 (last writer wins)
+S.D   F12 32 R30
+S.D   F20 40 R30
+INSTRUCTIONS_END

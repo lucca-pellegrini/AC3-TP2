@@ -1,0 +1,44 @@
+# Common Data Bus contention.
+#
+# We deliberately set up four fully independent ADDs that all start
+# executing on the same cycle. With ADDD latency = 2 they all finish
+# their execute stage on the same cycle and would all like to broadcast
+# their result on the CDB at the same time -- but only one instruction
+# can write per cycle.
+#
+# Result: the first instruction in program order wins the bus, and
+# the others write on the subsequent cycles. Their write_cycle values
+# must all differ by at least 1.
+#
+# Expected values (correctness):
+#   F10 = 1 + 2 = 3
+#   F11 = 3 + 4 = 7
+#   F12 = 5 + 6 = 11
+#   F13 = 7 + 8 = 15
+
+CONFIG_BEGIN
+
+CYCLES ADDD 2
+
+UNITS ADDD 4   # 4 Add stations: all four ADDs can issue in 4 cycles
+               # and execute in parallel, then queue at the CDB
+
+CONFIG_END
+
+REG_INIT_BEGIN
+F0 1.0
+F1 2.0
+F2 3.0
+F3 4.0
+F4 5.0
+F5 6.0
+F6 7.0
+F7 8.0
+REG_INIT_END
+
+INSTRUCTIONS_BEGIN
+ADDD F10 F0 F1
+ADDD F11 F2 F3
+ADDD F12 F4 F5
+ADDD F13 F6 F7
+INSTRUCTIONS_END

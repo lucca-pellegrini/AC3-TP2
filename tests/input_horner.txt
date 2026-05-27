@@ -1,0 +1,49 @@
+# Horner's method for polynomial evaluation.
+#
+# Evaluate p(x) = a3*x^3 + a2*x^2 + a1*x + a0 as
+#     ((a3 * x + a2) * x + a1) * x + a0
+#
+# This creates a long, strictly-serial dependency chain alternating
+# MUL.D / ADD.D -- a great stress test for in-order commit because
+# every instruction waits on the previous one.
+#
+# Pick x = 2, a3 = 1, a2 = 2, a1 = 3, a0 = 4
+#   => p(2) = 1*8 + 2*4 + 3*2 + 4 = 8 + 8 + 6 + 4 = 26
+#
+# Step-by-step:
+#   F10 = a3 * x  = 1 * 2 = 2
+#   F11 = F10 + a2 = 2 + 2 = 4
+#   F12 = F11 * x  = 4 * 2 = 8
+#   F13 = F12 + a1 = 8 + 3 = 11
+#   F14 = F13 * x  = 11 * 2 = 22
+#   F15 = F14 + a0 = 22 + 4 = 26    <-- final result
+#
+# With only 1 Add unit and 1 Mul unit, the chain serializes nicely
+# and the timing column in the snapshot lines up cleanly.
+
+CONFIG_BEGIN
+
+CYCLES ADDD 2
+CYCLES MULTD 4
+
+UNITS ADDD 1
+UNITS MULTD 1
+
+CONFIG_END
+
+REG_INIT_BEGIN
+F0 2.0      # x
+F1 1.0      # a3
+F2 2.0      # a2
+F3 3.0      # a1
+F4 4.0      # a0
+REG_INIT_END
+
+INSTRUCTIONS_BEGIN
+MULTD F10 F1  F0    # a3 * x
+ADDD  F11 F10 F2    # + a2
+MULTD F12 F11 F0    # * x
+ADDD  F13 F12 F3    # + a1
+MULTD F14 F13 F0    # * x
+ADDD  F15 F14 F4    # + a0  -> final p(x)
+INSTRUCTIONS_END
