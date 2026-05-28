@@ -27,6 +27,11 @@ GEN_H   := src/parser.tab.h
 
 TARGET  := tomasulo
 
+# Kill GNU make's built-in .y -> .c and .l -> .c rules so they don't
+# clobber src/parser.c (the hand-written driver next to parser.y).
+%.c: %.y
+%.c: %.l
+
 .PHONY: all run test clean
 
 all: $(TARGET)

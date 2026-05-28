@@ -26,31 +26,31 @@
 #   F6 = 0  + 300 = 300   (Y[i])
 #   F8 = 20000 + 300 = 20300
 
-CONFIG_BEGIN
+cycles {
+    add.d  = 2
+    mult.d = 6
+    l.d    = 2
+    s.d    = 2
+}
 
-CYCLES ADDD 2
-CYCLES MULTD 6
-CYCLES LD 2
-CYCLES SD 2
+units {
+    add.d  = 2
+    mult.d = 1
+    l.d    = 3
+    s.d    = 2
+}
 
-UNITS ADDD 2
-UNITS MULTD 1
-MEM_UNITS LD 3
-MEM_UNITS SD 2
+registers {
+    R1 = 100
+    R2 = 200
+    R3 = 300
+}
 
-CONFIG_END
-
-REG_INIT_BEGIN
-R1 100
-R2 200
-R3 300
-REG_INIT_END
-
-INSTRUCTIONS_BEGIN
-L.D   F0 0 R1       # load scalar a
-L.D   F2 0 R2       # load X[i]
-MUL.D F4 F0 F2      # a * X[i]
-L.D   F6 0 R3       # load Y[i]  (independent of MUL, can run in parallel)
-ADD.D F8 F4 F6      # a*X[i] + Y[i]
-S.D   F8 0 R3       # store back into Y[i]
-INSTRUCTIONS_END
+instructions {
+    L.D   F0 0(R1)      # load scalar a
+    L.D   F2 0(R2)      # load X[i]
+    MUL.D F4 F0 F2      # a * X[i]
+    L.D   F6 0(R3)      # load Y[i]  (independent of MUL, can run in parallel)
+    ADD.D F8 F4 F6      # a*X[i] + Y[i]
+    S.D   F8 0(R3)      # store back into Y[i]
+}

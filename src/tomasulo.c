@@ -18,6 +18,7 @@
 #endif
 #include "tomasulo.h"
 
+#include <ctype.h>
 #include <math.h>
 #include <string.h>
 #include <strings.h>
@@ -37,17 +38,34 @@ const char *opcode_name(Opcode op)
 
 Opcode opcode_from_str(const char *s)
 {
-	struct {
+	if (!s)
+		return OP_COUNT;
+
+	// Normalise: uppercase, strip '.' and '_' so that all of
+	// "MULT.D", "MULT_D", "MULTD", "mul.d", "Mul_D" map to "MULTD".
+	char buf[MAX_NAME_LEN + 1];
+	size_t j = 0;
+	for (size_t i = 0; s[i] != '\0' && j < sizeof(buf) - 1; i++) {
+		unsigned char ch = (unsigned char)s[i];
+		if (ch == '.' || ch == '_')
+			continue;
+		buf[j++] = (char)toupper(ch);
+	}
+	buf[j] = '\0';
+	if (j == 0)
+		return OP_COUNT;
+
+	// Canonical forms (all without '.' or '_').
+	static const struct {
 		const char *name;
 		Opcode op;
 	} map[] = {
-		{ "ADDD", OP_ADDD },  { "ADD.D", OP_ADDD },  { "SUBD", OP_SUBD },
-		{ "SUB.D", OP_SUBD }, { "MULTD", OP_MULTD }, { "MUL.D", OP_MULTD },
-		{ "DIVD", OP_DIVD },  { "DIV.D", OP_DIVD },  { "LD", OP_LD },
-		{ "L.D", OP_LD },     { "SD", OP_SD },	     { "S.D", OP_SD },
+		{ "ADDD", OP_ADDD },   { "SUBD", OP_SUBD }, { "MULD", OP_MULTD }, // MUL.D
+		{ "MULTD", OP_MULTD }, // MULT.D / MULTD
+		{ "DIVD", OP_DIVD },   { "LD", OP_LD },	    { "SD", OP_SD },
 	};
 	for (size_t i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
-		if (strcasecmp(s, map[i].name) == 0)
+		if (strcmp(buf, map[i].name) == 0)
 			return map[i].op;
 	}
 	return OP_COUNT; // invalid

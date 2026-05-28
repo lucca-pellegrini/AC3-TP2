@@ -1,30 +1,34 @@
 /* SPDX-License-Identifier: MIT
  * Tomasulo Simulator -- Bison grammar for input files.
  *
- * Grammar (informal):
+ * Input file grammar (informal, C-like):
  *
- *   input        : config_section reg_init_section? instr_section ;
+ *   input            : block+
+ *                    ;
  *
- *   config_section : CONFIG_BEGIN config_item* CONFIG_END ;
- *   config_item    : CYCLES OPCODE INT
- *                  | UNITS  OPCODE INT
- *                  | MEM_UNITS OPCODE INT
- *                  ;
+ *   block            : cycles_block
+ *                    | units_block
+ *                    | registers_block
+ *                    | instructions_block
+ *                    ;
  *
- *   reg_init_section : REG_INIT_BEGIN reg_init* REG_INIT_END ;
- *   reg_init         : REG number ;
+ *   cycles_block     : 'cycles' '{' (OPCODE '=' INT)*           '}' ;
+ *   units_block      : 'units'  '{' (OPCODE '=' INT)*           '}' ;
+ *   registers_block  : 'registers' '{' (REG '=' number)*        '}' ;
+ *   instructions_block : 'instructions' '{' instruction*        '}' ;
  *
- *   instr_section : INSTRUCTIONS_BEGIN instruction* INSTRUCTIONS_END ;
- *   instruction   : OPCODE REG REG REG          (arithmetic)
- *                 | OPCODE REG INT REG          (L.D/S.D, simple form)
- *                 | OPCODE REG INT LPAREN REG RPAREN   (MIPS offset(base))
- *                 ;
+ *   instruction      : OPCODE REG REG REG                       (arithmetic)
+ *                    | OPCODE REG INT REG                       (L.D/S.D, simple form)
+ *                    | OPCODE REG INT '(' REG ')'               (MIPS offset(base))
+ *                    ;
  *
- *   number : INT | FLOAT ;
+ *   number           : INT | FLOAT ;
  *
- * Whitespace, newlines and '#' comments are skipped in the lexer, so the
- * grammar is purely token-driven.  Commas act as token separators and are
- * also discarded by the lexer.
+ * Items inside a block may be separated by whitespace, newlines,
+ * commas, or semicolons (all handled by the lexer).  '#' and '//'
+ * comments run to end of line.  Block keywords and opcodes are
+ * matched case-insensitively with '.'/'_' ignored, so mult.d ==
+ * MULT_D == MULTD.
  */
 
 %define api.pure full
@@ -57,17 +61,30 @@ typedef void *yyscan_t;
 int  tom_yylex(TOM_YYSTYPE *yylval_param, TOM_YYLTYPE *yylloc_param, void *yyscanner);
 void tom_yyerror(TOM_YYLTYPE *loc, void *scanner, ParseContext *ctx, const char *msg);
 
-/* Map an Opcode to the reservation-station type it consumes. */
-static int op_to_rs_type(Opcode op, RSType *out)
+/* Map an Opcode to the reservation-station type it consumes.  Every
+ * opcode we know about has a corresponding RS pool, so this is total. */
+static RSType op_to_rs_type(Opcode op)
 {
     switch (op) {
     case OP_ADDD:
-    case OP_SUBD:  *out = RS_ADD;   return 0;
+    case OP_SUBD:  return RS_ADD;
     case OP_MULTD:
-    case OP_DIVD:  *out = RS_MULT;  return 0;
-    case OP_LD:    *out = RS_LOAD;  return 0;
-    case OP_SD:    *out = RS_STORE; return 0;
-    default:       return -1;
+    case OP_DIVD:  return RS_MULT;
+    case OP_LD:    return RS_LOAD;
+    case OP_SD:    return RS_STORE;
+    default:       return RS_ADD; /* unreachable: lexer rejects bad opcodes */
+    }
+}
+
+/* Lazily initialise the simulator the first time we need it -- either
+ * because we're about to set initial register values, or because we're
+ * about to start consuming instructions.  The grammar is liberal about
+ * block ordering, so we can't tie this to a single rule. */
+static void ensure_sim_ready(ParseContext *ctx)
+{
+    if (!ctx->sim_ready) {
+        sim_init(ctx->sim, ctx->cfg);
+        ctx->sim_ready = true;
     }
 }
 }
@@ -79,16 +96,11 @@ static int op_to_rs_type(Opcode op, RSType *out)
     Opcode   opcode;
 }
 
-/* Section delimiters. */
-%token CONFIG_BEGIN CONFIG_END
-%token REG_INIT_BEGIN REG_INIT_END
-%token INSTRUCTIONS_BEGIN INSTRUCTIONS_END
-
-/* Config keywords. */
-%token CYCLES UNITS MEM_UNITS
+/* Block keywords. */
+%token CYCLES UNITS REGISTERS INSTRUCTIONS
 
 /* Punctuation. */
-%token LPAREN RPAREN
+%token LBRACE RBRACE EQUALS LPAREN RPAREN
 
 /* Value-bearing terminals. */
 %token <ival>   INT
@@ -103,72 +115,76 @@ static int op_to_rs_type(Opcode op, RSType *out)
 %%
 
 input
-    : config_section opt_reg_init instr_section
+    : blocks
     ;
 
-opt_reg_init
+blocks
     : /* empty */
-    | reg_init_section
+    | blocks block
     ;
 
-/* ── Config ─────────────────────────────────────────────────────── */
-
-config_section
-    : CONFIG_BEGIN config_items CONFIG_END
+block
+    : cycles_block
+    | units_block
+    | registers_block
+    | instructions_block
     ;
 
-config_items
+/* ── cycles { OPCODE = INT, ... } ───────────────────────────────── */
+
+cycles_block
+    : CYCLES LBRACE cycles_items RBRACE
+    ;
+
+cycles_items
     : /* empty */
-    | config_items config_item
+    | cycles_items cycles_item
     ;
 
-config_item
-    : CYCLES OPCODE INT
+cycles_item
+    : OPCODE EQUALS INT
         {
-            ctx->cfg->latency[$2] = $3;
+            ctx->cfg->latency[$1] = $3;
         }
-    | UNITS OPCODE INT
+    ;
+
+/* ── units { OPCODE = INT, ... } ────────────────────────────────── */
+
+units_block
+    : UNITS LBRACE units_items RBRACE
+    ;
+
+units_items
+    : /* empty */
+    | units_items units_item
+    ;
+
+units_item
+    : OPCODE EQUALS INT
         {
-            RSType t;
-            if (op_to_rs_type($2, &t) != 0) {
-                tom_parse_error(ctx, @2,
-                    "UNITS not applicable to opcode '%s'",
-                    opcode_name($2));
-                YYERROR;
-            }
+            RSType t = op_to_rs_type($1);
             ctx->cfg->num_rs[t] = $3;
         }
-    | MEM_UNITS OPCODE INT
-        {
-            RSType t;
-            if (op_to_rs_type($2, &t) != 0 ||
-                ($2 != OP_LD && $2 != OP_SD)) {
-                tom_parse_error(ctx, @2,
-                    "MEM_UNITS only applies to L.D / S.D, got '%s'",
-                    opcode_name($2));
-                YYERROR;
-            }
-            ctx->cfg->num_rs[t] = $3;
-        }
     ;
 
-/* ── Register init (optional) ───────────────────────────────────── */
+/* ── registers { Fx = number, ... } ─────────────────────────────── */
 
-reg_init_section
-    : REG_INIT_BEGIN { ctx->sim_ready = true; sim_init(ctx->sim, ctx->cfg); }
-      reg_inits
-      REG_INIT_END
+registers_block
+    : REGISTERS LBRACE
+        { ensure_sim_ready(ctx); }
+      register_items
+      RBRACE
     ;
 
-reg_inits
+register_items
     : /* empty */
-    | reg_inits reg_init
+    | register_items register_item
     ;
 
-reg_init
-    : REG number
+register_item
+    : REG EQUALS number
         {
-            sim_set_reg(ctx->sim, $1, $2);
+            sim_set_reg(ctx->sim, $1, $3);
         }
     ;
 
@@ -177,20 +193,13 @@ number
     | FLOAT  { $$ = $1; }
     ;
 
-/* ── Instructions ───────────────────────────────────────────────── */
+/* ── instructions { ... } ───────────────────────────────────────── */
 
-instr_section
-    : INSTRUCTIONS_BEGIN
-        {
-            /* If no REG_INIT section was present, initialise the
-             * simulator now so it's ready to accept instructions. */
-            if (!ctx->sim_ready) {
-                sim_init(ctx->sim, ctx->cfg);
-                ctx->sim_ready = true;
-            }
-        }
+instructions_block
+    : INSTRUCTIONS LBRACE
+        { ensure_sim_ready(ctx); }
       instructions
-      INSTRUCTIONS_END
+      RBRACE
     ;
 
 instructions

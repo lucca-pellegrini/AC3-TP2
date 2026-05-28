@@ -4,6 +4,25 @@
  * Generates a reentrant scanner that feeds tokens to the Bison
  * grammar (parser.y).  The scanner tracks line numbers so the parser
  * can produce useful error messages.
+ *
+ * Input syntax (C-like):
+ *
+ *     cycles {
+ *         add.d = 2
+ *         mult.d = 4
+ *     }
+ *
+ *     units { add.d = 1, mult.d = 1, ld = 2, sd = 1 }
+ *
+ *     registers { F4 = 2.0, F6 = 10.0 }   # optional
+ *
+ *     instructions {
+ *         ADDD F1 F2 F3       # comment
+ *         L.D  F0 0 R1
+ *     }
+ *
+ * Identifier matching is permissive: punctuation ('.', '_') is stripped
+ * and case is folded, so MULT.D == mult_d == MULTD == multd.
  */
 
 %option noyywrap nounput noinput
@@ -17,6 +36,7 @@
 #include "parser_internal.h"
 #include "parser.tab.h"   /* Bison-generated token codes */
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -32,6 +52,20 @@
         yylloc->first_line   = yylineno;            \
         yylloc->last_line    = yylineno;            \
     } while (0);
+
+/* Normalise an identifier in place: uppercase, drop '.' and '_'.
+ * Used to recognise block keywords (cycles, units, ...) in a way
+ * that's consistent with how opcode_from_str() treats opcodes. */
+static void normalise_ident(char *s)
+{
+    char *w = s;
+    for (char *r = s; *r; r++) {
+        if (*r == '.' || *r == '_')
+            continue;
+        *w++ = (char)toupper((unsigned char)*r);
+    }
+    *w = '\0';
+}
 %}
 
 DIGIT      [0-9]
@@ -45,23 +79,16 @@ ID         [A-Za-z_][A-Za-z0-9_.]*
 
 [ \t\r]+              { /* skip horizontal whitespace */ }
 \n                    { /* skip newlines (yylineno updated automatically) */ }
-#[^\n]*               { /* skip comments to end of line */ }
+#[^\n]*               { /* skip '#' comments to end of line */ }
+"//"[^\n]*            { /* skip '//' comments to end of line */ }
 ","                   { /* commas are pure separators */ }
+";"                   { /* semicolons too -- harmless statement terminators */ }
 
+"{"                   { return LBRACE; }
+"}"                   { return RBRACE; }
+"="                   { return EQUALS; }
 "("                   { return LPAREN; }
 ")"                   { return RPAREN; }
-
-"CONFIG_BEGIN"        { return CONFIG_BEGIN; }
-"CONFIG_END"          { return CONFIG_END; }
-"REG_INIT_BEGIN"      { return REG_INIT_BEGIN; }
-"REG_INIT_END"        { return REG_INIT_END; }
-"INSTRUCTIONS_BEGIN"  { return INSTRUCTIONS_BEGIN; }
-"INSTRUCTIONS_END"    { return INSTRUCTIONS_END; }
-
-    /* Case-insensitive keywords for config directives. */
-[Cc][Yy][Cc][Ll][Ee][Ss]         { return CYCLES; }
-[Uu][Nn][Ii][Tt][Ss]             { return UNITS; }
-[Mm][Ee][Mm]_[Uu][Nn][Ii][Tt][Ss] { return MEM_UNITS; }
 
     /* Register names: F0..F31 or R0..R31.  Validation happens here so
      * the grammar only ever sees well-formed register indices. */
@@ -87,10 +114,26 @@ ID         [A-Za-z_][A-Za-z0-9_.]*
     return INT;
 }
 
-    /* Opcode identifiers: ADD.D, ADDD, SUB.D, MUL.D, DIV.D, L.D, S.D, etc.
-     * We let opcode_from_str() decide which strings are valid; anything
-     * unrecognised becomes a parse error. */
+    /* Generic identifier: could be a block keyword (cycles/units/registers/
+     * instructions) or an opcode (ADD.D, MUL.D, L.D, ...).  We normalise
+     * once and then check both possibilities.  Anything unrecognised is a
+     * parse error. */
 {ID}                  {
+    char norm[MAX_NAME_LEN + 1];
+    size_t n = strlen(yytext);
+    if (n > MAX_NAME_LEN)
+        n = MAX_NAME_LEN;
+    memcpy(norm, yytext, n);
+    norm[n] = '\0';
+    normalise_ident(norm);
+
+    if (strcmp(norm, "CYCLES") == 0)        return CYCLES;
+    if (strcmp(norm, "UNITS") == 0)         return UNITS;
+    if (strcmp(norm, "MEMUNITS") == 0)      return UNITS; /* alias */
+    if (strcmp(norm, "REGISTERS") == 0)     return REGISTERS;
+    if (strcmp(norm, "REGINIT") == 0)       return REGISTERS; /* alias */
+    if (strcmp(norm, "INSTRUCTIONS") == 0)  return INSTRUCTIONS;
+
     Opcode op = opcode_from_str(yytext);
     if (op >= OP_COUNT) {
         tom_parse_error(yyextra, *yylloc,

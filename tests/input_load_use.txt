@@ -12,25 +12,25 @@
 #   F6 = F2 + F4 = 224
 #   F8 = F6 * F2 = 224 * 108 = 24192
 
-CONFIG_BEGIN
+cycles {
+    add.d  = 2
+    mult.d = 4
+    l.d    = 2
+}
 
-CYCLES ADDD 2
-CYCLES MULTD 4
-CYCLES LD 2
+units {
+    add.d  = 2
+    mult.d = 1
+    l.d    = 2
+}
 
-UNITS ADDD 2
-UNITS MULTD 1
-MEM_UNITS LD 2
+registers {
+    R1 = 100
+}
 
-CONFIG_END
-
-REG_INIT_BEGIN
-R1 100
-REG_INIT_END
-
-INSTRUCTIONS_BEGIN
-L.D   F2  8  R1     # F2 = Mem[108], simulated as 8 + 100 = 108
-L.D   F4  16 R1     # F4 = Mem[116], simulated as 16 + 100 = 116 (parallel)
-ADD.D F6  F2 F4     # waits for both loads on the CDB
-MUL.D F8  F6 F2     # waits for F6 from the ADD
-INSTRUCTIONS_END
+instructions {
+    L.D   F2 8(R1)      # F2 = Mem[108], simulated as 8 + 100 = 108
+    L.D   F4 16(R1)     # F4 = Mem[116], simulated as 16 + 100 = 116 (parallel)
+    ADD.D F6 F2 F4      # waits for both loads on the CDB
+    MUL.D F8 F6 F2      # waits for F6 from the ADD
+}

@@ -28,38 +28,38 @@
 #   S.D F12, 32(R30) ; store
 #   S.D F20, 40(R30) ; store (must wait for the last ADD)
 
-CONFIG_BEGIN
+cycles {
+    add.d  = 2
+    sub.d  = 2
+    mult.d = 6
+    div.d  = 20
+    l.d    = 2
+    s.d    = 2
+}
 
-CYCLES ADDD 2
-CYCLES SUBD 2
-CYCLES MULTD 6
-CYCLES DIVD 20
-CYCLES LD 2
-CYCLES SD 2
+units {
+    add.d  = 3
+    mult.d = 2
+    l.d    = 3
+    s.d    = 2
+}
 
-UNITS ADDD 3
-UNITS MULTD 2
-MEM_UNITS LD 3
-MEM_UNITS SD 2
+registers {
+    R30 = 100
+    R31 = 200
+}
 
-CONFIG_END
-
-REG_INIT_BEGIN
-R30 100
-R31 200
-REG_INIT_END
-
-INSTRUCTIONS_BEGIN
-L.D   F20 0  R30
-L.D   F21 8  R30
-L.D   F22 16 R31
-L.D   F23 24 R31
-MUL.D F8  F20 F21
-MUL.D F10 F22 F23
-ADD.D F12 F8  F10
-SUB.D F14 F10 F8
-DIV.D F16 F12 F14
-ADD.D F20 F16 F21    # WAW on F20 (last writer wins)
-S.D   F12 32 R30
-S.D   F20 40 R30
-INSTRUCTIONS_END
+instructions {
+    L.D   F20 0(R30)
+    L.D   F21 8(R30)
+    L.D   F22 16(R31)
+    L.D   F23 24(R31)
+    MUL.D F8  F20 F21
+    MUL.D F10 F22 F23
+    ADD.D F12 F8  F10
+    SUB.D F14 F10 F8
+    DIV.D F16 F12 F14
+    ADD.D F20 F16 F21   # WAW on F20 (last writer wins)
+    S.D   F12 32(R30)
+    S.D   F20 40(R30)
+}
