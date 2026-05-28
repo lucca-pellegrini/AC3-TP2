@@ -92,7 +92,7 @@ void display_instructions(FILE *out, const Simulator *sim)
 	const char *exec_color = C(out, ANSI_CYAN);
 	const char *write_color = C(out, ANSI_BR_GREEN);
 
-	display_separator(out, 78, "Instruction Status");
+	display_separator(out, 61, "Instruction Status");
 
 	// Header row (bold + underlined)
 	fprintf(out, "%s%s", bold, C(out, ANSI_UNDER));
@@ -157,7 +157,7 @@ void display_rs(FILE *out, const Simulator *sim)
 	const char *val_color = C(out, ANSI_CYAN);
 	const char *tag_color = C(out, ANSI_YELLOW);
 
-	display_separator(out, 78, "Reservation Stations");
+	display_separator(out, 64, "Reservation Stations");
 
 	fprintf(out, "%s%s", bold, C(out, ANSI_UNDER));
 	fprintf(out, " %-6s  %-3s  %-6s  %8s  %8s  %4s  %4s  %4s  %4s", "Name", "Occ", "Op", "Vj",
@@ -226,7 +226,7 @@ void display_rob(FILE *out, const Simulator *sim)
 	const char *val_color = C(out, ANSI_CYAN);
 	const char *busy_yes = C(out, ANSI_BR_GREEN);
 
-	display_separator(out, 78, "Reorder Buffer");
+	display_separator(out, 50, "Reorder Buffer");
 
 	fprintf(out, "%s%s", bold, C(out, ANSI_UNDER));
 	fprintf(out, " %-4s  %-3s  %-10s  %-6s  %-6s  %10s", "Tag", "Occ", "State", "Op", "Dest",
@@ -261,8 +261,6 @@ void display_rat(FILE *out, const Simulator *sim)
 	const char *tag_color = C(out, ANSI_YELLOW);
 	const char *dim = C(out, ANSI_DIM);
 
-	display_separator(out, 78, "Register Status (RAT)");
-
 	bool any = false;
 	for (int i = 0; i < MAX_FP_REGISTERS; i++) {
 		if (sim->rat.Qi[i] != 0) {
@@ -271,9 +269,11 @@ void display_rat(FILE *out, const Simulator *sim)
 		}
 	}
 	if (!any) {
-		fprintf(out, " %s(no in-flight register renames)%s\n", dim, reset);
+		fprintf(out, "\n\n %s(no in-flight register renames)%s\n", dim, reset);
 		return;
 	}
+
+	display_separator(out, 32, "Register Status (RAT)");
 
 	// First line: register names
 	fprintf(out, " %s", bold);
