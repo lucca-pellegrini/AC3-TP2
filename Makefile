@@ -7,10 +7,10 @@
 CC      ?= cc
 LEX     ?= flex
 YACC    ?= bison
-CFLAGS  := -std=c23 -Wall -Wextra -Wpedantic -D_GNU_SOURCE -O2
+CFLAGS  := -std=c23 -Wall -Wextra -Wpedantic -D_GNU_SOURCE -O3
 # Generated flex/bison sources tend to emit code that trips strict
 # warnings; relax just for them.
-GEN_CFLAGS := -std=c23 -D_GNU_SOURCE -O2 -Wno-unused-function -Wno-unused-but-set-variable
+GEN_CFLAGS := -std=c23 -D_GNU_SOURCE -O3 -Wno-unused-function -Wno-unused-but-set-variable
 LDFLAGS := -lm
 
 # Hand-written sources.
@@ -97,6 +97,6 @@ test: $(TARGET)
 	@echo "All tests completed."
 
 clean:
-	rm -f $(TARGET)
-	rm -f $(OBJ) $(GEN_O) $(GEN_C) $(GEN_H)
-	rm -rf zig-out .zig-cache
+	$(RM) $(TARGET)
+	$(RM) $(OBJ) $(GEN_O) $(GEN_C) $(GEN_H)
+	$(RM) -r zig-out .zig-cache
