@@ -1335,3 +1335,475 @@ test "back-to-back dependent ADDs with minimal latency" {
     try testing.expectApproxEqAbs(4.0, sim.fp_regs[3], 0.001);
     try testing.expectApproxEqAbs(5.0, sim.fp_regs[4], 0.001);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Parser syntax tests
+//
+// These exercise the flex/bison front-end directly by writing tiny
+// input fragments to a tmp file and feeding them to parse_input().
+// They cover the surface area of the new C-like grammar: block
+// keywords, brace/comma/semicolon separators, '=' assignments,
+// comment styles, opcode/key spelling normalisation (case, '.', '_'),
+// memory operand forms, and a handful of error cases.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const c_io = @cImport({
+    @cInclude("stdio.h");
+    @cInclude("unistd.h");
+    @cInclude("fcntl.h");
+    @cInclude("stdlib.h");
+    @cInclude("string.h");
+});
+
+// Write `text` to a freshly-created temp file via libc and return its
+// NUL-terminated path.  Caller frees with `freeTmpPath()`.
+//
+// We bypass std.Io here because Zig 0.16's tmpDir/writeFile dance got
+// thorny (writeFile now requires an Io param, realpathAlloc moved).
+// libc's mkstemp/write is dead simple and we already link libc.
+fn makeTmpFile(text: []const u8) ![:0]u8 {
+    var template_buf: [64]u8 = undefined;
+    const template = std.fmt.bufPrintZ(
+        &template_buf,
+        "/tmp/tomasulo_parser_test_XXXXXX",
+        .{},
+    ) catch unreachable;
+    const fd = c_io.mkstemp(template.ptr);
+    if (fd < 0) return error.MkstempFailed;
+    const written = c_io.write(fd, text.ptr, text.len);
+    _ = c_io.close(fd);
+    if (written < 0 or @as(usize, @intCast(written)) != text.len)
+        return error.WriteFailed;
+    return testing.allocator.dupeZ(u8, template);
+}
+
+fn freeTmpPath(path: [:0]u8) void {
+    _ = c_io.unlink(path.ptr);
+    testing.allocator.free(path);
+}
+
+// Write `text`, parse it, return cfg+sim+path.  Asserts parse succeeds.
+fn parseSource(text: []const u8) !struct {
+    cfg: c.TomasuloConfig,
+    sim: c.Simulator,
+    path: [:0]u8,
+} {
+    const path = try makeTmpFile(text);
+    var cfg: c.TomasuloConfig = undefined;
+    var sim: c.Simulator = undefined;
+    const rc = c.parse_input(path.ptr, &cfg, &sim);
+    if (rc != 0) {
+        freeTmpPath(path);
+        return error.ParseFailed;
+    }
+    return .{ .cfg = cfg, .sim = sim, .path = path };
+}
+
+fn freeParse(p: anytype) void {
+    freeTmpPath(p.path);
+}
+
+// Parse and expect a parse error.  Suppresses the parser's stderr
+// chatter so test output stays clean.
+fn parseExpectFail(text: []const u8) !void {
+    const path = try makeTmpFile(text);
+    defer freeTmpPath(path);
+
+    // Redirect stderr to /dev/null while parse_input runs.
+    const saved = c_io.dup(2);
+    const dn = c_io.open("/dev/null", c_io.O_WRONLY);
+    if (dn >= 0) {
+        _ = c_io.dup2(dn, 2);
+        _ = c_io.close(dn);
+    }
+    defer {
+        if (saved >= 0) {
+            _ = c_io.dup2(saved, 2);
+            _ = c_io.close(saved);
+        }
+    }
+
+    var cfg: c.TomasuloConfig = undefined;
+    var sim: c.Simulator = undefined;
+    const rc = c.parse_input(path.ptr, &cfg, &sim);
+    try testing.expect(rc != 0);
+}
+
+// ── Smoke: minimal program ─────────────────────────────────────────────────
+
+test "parser: minimal program (only instructions block)" {
+    const src =
+        \\instructions {
+        \\    ADDD F1 F2 F3
+        \\}
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 1), p.sim.num_instructions);
+    try testing.expectEqual(@as(c_uint, c.OP_ADDD), p.sim.instructions[0].op);
+    try testing.expectEqual(@as(c_int, 1), p.sim.instructions[0].dest);
+    try testing.expectEqual(@as(c_int, 2), p.sim.instructions[0].src1);
+    try testing.expectEqual(@as(c_int, 3), p.sim.instructions[0].src2);
+}
+
+test "parser: empty instructions block parses" {
+    const src = "instructions {}";
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 0), p.sim.num_instructions);
+}
+
+test "parser: empty file is accepted (defaults apply)" {
+    const src = "";
+    const p = try parseSource(src);
+    defer freeParse(p);
+    // Defaults from config_default() should be in effect.
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 0), p.sim.num_instructions);
+}
+
+// ── Block keyword: case + punctuation flexibility ──────────────────────────
+
+test "parser: block keywords are case-insensitive" {
+    const src =
+        \\CYCLES { add.d = 3 }
+        \\Units { mult.d = 2 }
+        \\Registers { F1 = 1.5 }
+        \\INSTRUCTIONS { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 3), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.num_rs[c.RS_MULT]);
+    try testing.expectApproxEqAbs(1.5, p.sim.fp_regs[1], 0.001);
+    try testing.expectEqual(@as(c_int, 1), p.sim.num_instructions);
+}
+
+test "parser: reg_init is an alias for registers" {
+    const src =
+        \\reg_init { F4 = 2.5 }
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectApproxEqAbs(2.5, p.sim.fp_regs[4], 0.001);
+}
+
+test "parser: mem_units is an alias for units" {
+    const src =
+        \\mem_units { l.d = 4, s.d = 2 }
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 4), p.cfg.num_rs[c.RS_LOAD]);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.num_rs[c.RS_STORE]);
+}
+
+// ── Opcode/key spelling normalisation ──────────────────────────────────────
+
+test "parser: opcode keys accept '.', '_', or no separator" {
+    const src =
+        \\cycles {
+        \\    add.d  = 2
+        \\    SUB_D  = 3
+        \\    MultD  = 5
+        \\    div.d  = 7
+        \\    L_D    = 11
+        \\    sd     = 13
+        \\}
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 3), p.cfg.latency[c.OP_SUBD]);
+    try testing.expectEqual(@as(c_int, 5), p.cfg.latency[c.OP_MULTD]);
+    try testing.expectEqual(@as(c_int, 7), p.cfg.latency[c.OP_DIVD]);
+    try testing.expectEqual(@as(c_int, 11), p.cfg.latency[c.OP_LD]);
+    try testing.expectEqual(@as(c_int, 13), p.cfg.latency[c.OP_SD]);
+}
+
+test "parser: instruction opcodes accept mixed spellings" {
+    const src =
+        \\instructions {
+        \\    add.d  F1 F2 F3
+        \\    SUB_D  F4 F2 F3
+        \\    MultD  F5 F2 F3
+        \\    div_d  F6 F2 F3
+        \\}
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 4), p.sim.num_instructions);
+    try testing.expectEqual(@as(c_uint, c.OP_ADDD), p.sim.instructions[0].op);
+    try testing.expectEqual(@as(c_uint, c.OP_SUBD), p.sim.instructions[1].op);
+    try testing.expectEqual(@as(c_uint, c.OP_MULTD), p.sim.instructions[2].op);
+    try testing.expectEqual(@as(c_uint, c.OP_DIVD), p.sim.instructions[3].op);
+}
+
+// ── Block ordering ─────────────────────────────────────────────────────────
+
+test "parser: block order is flexible (instructions first)" {
+    const src =
+        \\instructions { ADDD F1 F2 F3 }
+        \\cycles { add.d = 5 }
+        \\registers { F2 = 7.0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 1), p.sim.num_instructions);
+    try testing.expectEqual(@as(c_int, 5), p.cfg.latency[c.OP_ADDD]);
+    // Note: registers block after instructions still sets the register.
+    try testing.expectApproxEqAbs(7.0, p.sim.fp_regs[2], 0.001);
+}
+
+test "parser: same block can appear twice (later wins)" {
+    const src =
+        \\cycles { add.d = 2 }
+        \\cycles { add.d = 9 }
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 9), p.cfg.latency[c.OP_ADDD]);
+}
+
+// ── Separators (commas, semicolons, newlines) ──────────────────────────────
+
+test "parser: items can be comma-separated on one line" {
+    const src =
+        \\cycles { add.d = 2, mult.d = 4, div.d = 8 }
+        \\units  { add.d = 1, mult.d = 1 }
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 4), p.cfg.latency[c.OP_MULTD]);
+    try testing.expectEqual(@as(c_int, 8), p.cfg.latency[c.OP_DIVD]);
+}
+
+test "parser: semicolons work as item separators" {
+    const src =
+        \\cycles { add.d = 2; mult.d = 4; }
+        \\instructions { ADDD F0 F0 F0; }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 4), p.cfg.latency[c.OP_MULTD]);
+    try testing.expectEqual(@as(c_int, 1), p.sim.num_instructions);
+}
+
+test "parser: extra commas and whitespace are tolerated" {
+    const src =
+        \\cycles {,,, add.d = 2,,, mult.d = 4 ,,,}
+        \\instructions {  ADDD  F0  F0  F0  }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+}
+
+// ── Comments ───────────────────────────────────────────────────────────────
+
+test "parser: '#' comments are stripped" {
+    const src =
+        \\# top-level comment
+        \\cycles {
+        \\    add.d = 2  # trailing comment
+        \\    # comment in the middle
+        \\    mult.d = 4
+        \\}
+        \\instructions { ADDD F0 F0 F0 }  # comment after block
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 4), p.cfg.latency[c.OP_MULTD]);
+}
+
+test "parser: '//' comments are stripped" {
+    const src =
+        \\// like C
+        \\cycles { add.d = 2 } // trailing
+        \\instructions { ADDD F0 F0 F0 // comment inside block
+        \\}
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 1), p.sim.num_instructions);
+}
+
+// ── Memory operand forms ───────────────────────────────────────────────────
+
+test "parser: L.D with bare 'offset base' form" {
+    const src =
+        \\registers { R1 = 100 }
+        \\instructions { L.D F2 8 R1 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    const inst = p.sim.instructions[0];
+    try testing.expectEqual(@as(c_uint, c.OP_LD), inst.op);
+    try testing.expectEqual(@as(c_int, 2), inst.dest);
+    try testing.expectEqual(@as(c_int, 1), inst.src1); // R1
+    try testing.expectEqual(@as(c_int, 8), inst.imm);
+}
+
+test "parser: L.D with C-like 'offset(base)' form" {
+    const src =
+        \\registers { R1 = 100 }
+        \\instructions { L.D F2 8(R1) }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    const inst = p.sim.instructions[0];
+    try testing.expectEqual(@as(c_uint, c.OP_LD), inst.op);
+    try testing.expectEqual(@as(c_int, 2), inst.dest);
+    try testing.expectEqual(@as(c_int, 1), inst.src1);
+    try testing.expectEqual(@as(c_int, 8), inst.imm);
+}
+
+test "parser: both LD forms produce identical instruction" {
+    const src1 =
+        \\instructions { L.D F2 16 R1 }
+    ;
+    const src2 =
+        \\instructions { L.D F2 16(R1) }
+    ;
+    const p1 = try parseSource(src1);
+    defer freeParse(p1);
+    const p2 = try parseSource(src2);
+    defer freeParse(p2);
+    try testing.expectEqual(p1.sim.instructions[0].op, p2.sim.instructions[0].op);
+    try testing.expectEqual(p1.sim.instructions[0].dest, p2.sim.instructions[0].dest);
+    try testing.expectEqual(p1.sim.instructions[0].src1, p2.sim.instructions[0].src1);
+    try testing.expectEqual(p1.sim.instructions[0].imm, p2.sim.instructions[0].imm);
+}
+
+test "parser: S.D with offset(base) form" {
+    const src =
+        \\instructions { S.D F8 0(R3) }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    const inst = p.sim.instructions[0];
+    try testing.expectEqual(@as(c_uint, c.OP_SD), inst.op);
+    try testing.expectEqual(@as(c_int, 8), inst.dest);
+    try testing.expectEqual(@as(c_int, 3), inst.src1);
+    try testing.expectEqual(@as(c_int, 0), inst.imm);
+}
+
+test "parser: negative offset on memory instruction" {
+    const src =
+        \\instructions { L.D F2 -16(R1) }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, -16), p.sim.instructions[0].imm);
+}
+
+// ── Register init: numeric forms ───────────────────────────────────────────
+
+test "parser: register init accepts int, float and exponent" {
+    const src =
+        \\registers {
+        \\    F1 = 42
+        \\    F2 = 3.14
+        \\    F3 = -2.5
+        \\    F4 = 1.5e2
+        \\    F5 = -1e-3
+        \\}
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectApproxEqAbs(42.0, p.sim.fp_regs[1], 0.001);
+    try testing.expectApproxEqAbs(3.14, p.sim.fp_regs[2], 0.001);
+    try testing.expectApproxEqAbs(-2.5, p.sim.fp_regs[3], 0.001);
+    try testing.expectApproxEqAbs(150.0, p.sim.fp_regs[4], 0.001);
+    try testing.expectApproxEqAbs(-0.001, p.sim.fp_regs[5], 1e-6);
+}
+
+test "parser: F and R registers share the same index space" {
+    // R1 and F1 should refer to the same physical register.
+    const src =
+        \\registers { R1 = 7.0 }
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectApproxEqAbs(7.0, p.sim.fp_regs[1], 0.001);
+}
+
+// ── End-to-end: parse + run ────────────────────────────────────────────────
+
+test "parser: full program parses and simulates correctly" {
+    const src =
+        \\cycles { add.d = 2, mult.d = 4 }
+        \\units  { add.d = 1, mult.d = 1 }
+        \\registers { F4 = 2.0, F6 = 10.0 }
+        \\instructions {
+        \\    ADDD  F8  F4 F6     # F8  = 12
+        \\    MULTD F10 F8 F8     # F10 = 144
+        \\}
+    ;
+    var p = try parseSource(src);
+    defer freeParse(p);
+    _ = runToCompletion(&p.sim);
+    try testing.expect(c.sim_done(&p.sim));
+    try testing.expectApproxEqAbs(12.0, p.sim.fp_regs[8], 0.001);
+    try testing.expectApproxEqAbs(144.0, p.sim.fp_regs[10], 0.001);
+}
+
+// ── Error cases ────────────────────────────────────────────────────────────
+
+test "parser: unknown opcode rejected" {
+    try parseExpectFail(
+        \\instructions { FROB F1 F2 F3 }
+    );
+}
+
+test "parser: unknown block keyword rejected" {
+    try parseExpectFail(
+        \\widgets { foo = 1 }
+        \\instructions { ADDD F0 F0 F0 }
+    );
+}
+
+test "parser: missing closing brace rejected" {
+    try parseExpectFail(
+        \\cycles { add.d = 2
+        \\instructions { ADDD F0 F0 F0 }
+    );
+}
+
+test "parser: register out of range rejected" {
+    try parseExpectFail(
+        \\instructions { ADDD F99 F0 F0 }
+    );
+}
+
+test "parser: arithmetic opcode with offset form rejected" {
+    try parseExpectFail(
+        \\instructions { ADDD F1 0(R2) }
+    );
+}
+
+test "parser: memory opcode with three register form rejected" {
+    try parseExpectFail(
+        \\instructions { L.D F1 F2 F3 }
+    );
+}
+
+test "parser: missing '=' in config item rejected" {
+    try parseExpectFail(
+        \\cycles { add.d 2 }
+        \\instructions { ADDD F0 F0 F0 }
+    );
+}
