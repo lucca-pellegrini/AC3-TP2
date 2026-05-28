@@ -164,4 +164,15 @@ pub fn build(b: *std.Build) void {
     run_tests.stdio = .inherit;
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
+
+    // ── Clean step ────────────────────────────────────────────────────
+    const clean_step = b.step("clean", "Clean build artifacts");
+    const rm = b.addSystemCommand(&.{ "rm", "-f", "tomasulo" });
+    const rm_objs = b.addSystemCommand(&.{ "rm", "-f", "src/tomasulo.o", "src/parser.o", "src/display.o", "src/main.o", "src/parser.tab.o", "src/lex.parser.o" });
+    const rm_gen = b.addSystemCommand(&.{ "rm", "-f", "src/parser.tab.c", "src/lex.parser.c", "src/parser.tab.h" });
+    const rm_rf = b.addSystemCommand(&.{ "rm", "-rf", "zig-out", ".zig-cache" });
+    clean_step.dependOn(&rm.step);
+    clean_step.dependOn(&rm_objs.step);
+    clean_step.dependOn(&rm_gen.step);
+    clean_step.dependOn(&rm_rf.step);
 }
