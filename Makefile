@@ -5,17 +5,52 @@
 #        make clean    (remove artifacts)
 
 CC      ?= cc
+LEX     ?= flex
+YACC    ?= bison
 CFLAGS  := -std=c23 -Wall -Wextra -Wpedantic -D_GNU_SOURCE -O2
+# Generated flex/bison sources tend to emit code that trips strict
+# warnings; relax just for them.
+GEN_CFLAGS := -std=c23 -D_GNU_SOURCE -O2 -Wno-unused-function -Wno-unused-but-set-variable
 LDFLAGS := -lm
+
+# Hand-written sources.
 SRC     := src/tomasulo.c src/parser.c src/display.c src/main.c
+OBJ     := $(SRC:.c=.o)
+
+# Generated sources (created by flex/bison from parser.l / parser.y).
+# GNU make has implicit rules for .l -> .yy.c via $(LEX) and .y -> .tab.c
+# via $(YACC), but they don't produce reentrant scanners and they put
+# files in awkward places.  Use explicit rules to keep things tidy.
+GEN_C   := src/parser.tab.c src/lex.parser.c
+GEN_O   := $(GEN_C:.c=.o)
+GEN_H   := src/parser.tab.h
+
 TARGET  := tomasulo
 
 .PHONY: all run test clean
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -Isrc -o $@ $^ $(LDFLAGS)
+# Flex generates a reentrant scanner because parser.l declares it via
+# %option reentrant.  We name the output explicitly so it slots cleanly
+# next to the bison output.
+src/lex.parser.c: src/parser.l src/parser.tab.h
+	$(LEX) -o $@ $<
+
+# Bison produces both the .tab.c parser and the .tab.h with token codes.
+src/parser.tab.c src/parser.tab.h: src/parser.y
+	$(YACC) -d -o src/parser.tab.c $<
+
+# Hand-written .c -> .o with strict warnings.
+src/%.o: src/%.c $(GEN_H)
+	$(CC) $(CFLAGS) -Isrc -c -o $@ $<
+
+# Generated .c -> .o with relaxed warnings.
+src/parser.tab.o src/lex.parser.o: src/%.o: src/%.c $(GEN_H)
+	$(CC) $(GEN_CFLAGS) -Isrc -c -o $@ $<
+
+$(TARGET): $(OBJ) $(GEN_O)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 run: $(TARGET)
 	./$(TARGET) tests/input_basic.txt -b
@@ -58,4 +93,5 @@ test: $(TARGET)
 
 clean:
 	rm -f $(TARGET)
+	rm -f $(OBJ) $(GEN_O) $(GEN_C) $(GEN_H)
 	rm -rf zig-out .zig-cache

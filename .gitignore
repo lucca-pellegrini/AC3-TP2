@@ -48,6 +48,6 @@ vgcore.*
 \#*\#
 .\#*
 
-# Reference implementations (don't track in our repo)
-# ac3-tomasulo-cpp/
-# Tomasulo_saidaArquivo.cpp
+# Lex/Flex/Yacc/Bison stuff
+*.tab.[ch]
+*.parser.[ch]
