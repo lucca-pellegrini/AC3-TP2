@@ -2,10 +2,10 @@
 // Tomasulo Algorithm Simulator -- Entry Point
 //
 // Usage:
-//   tomasulo <input.txt>                  (interactive mode)
-//   tomasulo <input.txt> -b               (batch mode, print all cycles)
-//   tomasulo <input.txt> -q               (quiet, only final state)
-//   tomasulo <input.txt> -o <output.txt>  (write output to file)
+//   tomasulo <input.tom>                  (interactive mode)
+//   tomasulo <input.tom> -b               (batch mode, print all cycles)
+//   tomasulo <input.tom> -q               (quiet, only final state)
+//   tomasulo <input.tom> -o <output.txt>  (write output to file)
 //
 #include "display.h"
 #include "parser.h"
@@ -14,12 +14,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 
 static void usage(const char *prog)
 {
 	fprintf(stderr,
 		"Tomasulo Algorithm Simulator\n\n"
-		"Usage: %s <input.txt> [options]\n\n"
+		"Usage: %s <input.tom> [options]\n\n"
 		"Options:\n"
 		"  -b          Batch mode (print all cycles, no pause)\n"
 		"  -q          Quiet mode (only print final state)\n"
@@ -30,44 +31,47 @@ static void usage(const char *prog)
 
 int main(int argc, char *argv[])
 {
-	if (argc < 2) {
-		usage(argv[0]);
-		return 1;
-	}
-
 	const char *input_path = nullptr;
 	const char *output_path = nullptr;
 	DisplayMode mode = DISPLAY_INTERACTIVE;
+	int opt;
 
 	// Parse arguments
-	for (int i = 1; i < argc; i++) {
-		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+	struct option long_options[] = { { "help", no_argument, NULL, 'h' },
+					 { "batch", no_argument, NULL, 'b' },
+					 { "quiet", no_argument, NULL, 'q' },
+					 { "output", required_argument, NULL, 'o' },
+					 { NULL, 0, NULL, 0 } };
+
+	while ((opt = getopt_long(argc, argv, "hbqo:", long_options, NULL)) != -1) {
+		switch (opt) {
+		case 'h':
 			usage(argv[0]);
 			return 0;
-		} else if (strcmp(argv[i], "-b") == 0) {
+		case 'b':
 			mode = DISPLAY_BATCH;
-		} else if (strcmp(argv[i], "-q") == 0) {
+			break;
+		case 'q':
 			mode = DISPLAY_QUIET;
-		} else if (strcmp(argv[i], "-o") == 0) {
-			if (i + 1 >= argc) {
-				fprintf(stderr, "error: -o requires a filename\n");
-				return 1;
-			}
-			output_path = argv[++i];
-		} else if (argv[i][0] != '-') {
-			input_path = argv[i];
-		} else {
-			fprintf(stderr, "error: unknown option '%s'\n", argv[i]);
+			break;
+		case 'o':
+			output_path = optarg;
+			break;
+		default:
 			usage(argv[0]);
 			return 1;
 		}
 	}
 
-	if (!input_path) {
-		fprintf(stderr, "error: no input file specified\n");
-		usage(argv[0]);
-		return 1;
+	// Handle positional arguments (input file)
+	if (optind < argc) {
+		input_path = argv[optind];
 	}
+
+	// Handle stdin input: if no input or "-" is specified
+	if (!input_path || strcmp(input_path, "-") == 0)
+		input_path = "/dev/stdin";
+
 
 	// Open output
 	FILE *out = stdout;
