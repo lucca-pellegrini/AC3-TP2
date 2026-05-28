@@ -1,13 +1,13 @@
 cycles {
-    add.d  = 2
-    sub.d  = 2
-    mult.d = 4
-    div.d  = 10
+    ADD.D  = 2
+    SUB.D  = 2
+    MULT.D = 4
+    DIV.D  = 10
 }
 
 units {
-    add.d  = 1
-    mult.d = 1
+    ADD.D  = 1
+    MULT.D = 1
 }
 
 registers {

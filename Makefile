@@ -58,41 +58,41 @@ $(TARGET): $(OBJ) $(GEN_O)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 run: $(TARGET)
-	./$(TARGET) tests/input_basic.txt -b
+	./$(TARGET) tests/input_basic.tom -b
 
 test: $(TARGET)
 	@echo "=== Basic test ==="
-	./$(TARGET) tests/input_basic.txt -q
+	./$(TARGET) tests/input_basic.tom -q
 	@echo ""
 	@echo "=== CDB contention test ==="
-	./$(TARGET) tests/input_cdb_contention.txt -q
+	./$(TARGET) tests/input_cdb_contention.tom -q
 	@echo ""
 	@echo "=== Chain test ==="
-	./$(TARGET) tests/input_chain.txt -q
+	./$(TARGET) tests/input_chain.tom -q
 	@echo ""
 	@echo "=== Daxpy test ==="
-	./$(TARGET) tests/input_daxpy.txt -q
+	./$(TARGET) tests/input_daxpy.tom -q
 	@echo ""
 	@echo "=== Hennessy test ==="
-	./$(TARGET) tests/input_hennessy.txt -q
+	./$(TARGET) tests/input_hennessy.tom -q
 	@echo ""
 	@echo "=== Horner test ==="
-	./$(TARGET) tests/input_horner.txt -q
+	./$(TARGET) tests/input_horner.tom -q
 	@echo ""
 	@echo "=== Load use test ==="
-	./$(TARGET) tests/input_load_use.txt -q
+	./$(TARGET) tests/input_load_use.tom -q
 	@echo ""
 	@echo "=== Mixed stress test ==="
-	./$(TARGET) tests/input_mixed_stress.txt -q
+	./$(TARGET) tests/input_mixed_stress.tom -q
 	@echo ""
 	@echo "=== Parallel test ==="
-	./$(TARGET) tests/input_parallel.txt -q
+	./$(TARGET) tests/input_parallel.tom -q
 	@echo ""
 	@echo "=== Structural hazard test ==="
-	./$(TARGET) tests/input_structural.txt -q
+	./$(TARGET) tests/input_structural.tom -q
 	@echo ""
 	@echo "=== WAW test ==="
-	./$(TARGET) tests/input_waw.txt -q
+	./$(TARGET) tests/input_waw.tom -q
 	@echo ""
 	@echo "All tests completed."
 

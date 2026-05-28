@@ -1138,7 +1138,7 @@ test "custom latencies: latency 1 for ADD" {
 test "parse_input loads basic test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/input_basic.txt", &cfg, &sim);
+    const result = c.parse_input("tests/input_basic.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 3), sim.num_instructions);
     // Check config was parsed
@@ -1158,7 +1158,7 @@ test "parse_input loads basic test file" {
 test "parse_input loads chain test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/input_chain.txt", &cfg, &sim);
+    const result = c.parse_input("tests/input_chain.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 4), sim.num_instructions);
     _ = runToCompletion(&sim);
@@ -1172,7 +1172,7 @@ test "parse_input loads chain test file" {
 test "parse_input loads parallel test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/input_parallel.txt", &cfg, &sim);
+    const result = c.parse_input("tests/input_parallel.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 4), sim.num_instructions);
     _ = runToCompletion(&sim);
@@ -1186,7 +1186,7 @@ test "parse_input loads parallel test file" {
 test "parse_input loads Hennessy test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/input_hennessy.txt", &cfg, &sim);
+    const result = c.parse_input("tests/input_hennessy.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 6), sim.num_instructions);
     _ = runToCompletion(&sim);
@@ -1198,7 +1198,7 @@ test "parse_input loads Hennessy test file" {
 test "parse_input loads structural hazard test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/input_structural.txt", &cfg, &sim);
+    const result = c.parse_input("tests/input_structural.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 3), sim.num_instructions);
     _ = runToCompletion(&sim);
@@ -1230,7 +1230,7 @@ test "parse_input returns error for nonexistent file" {
             _ = c_stdio.close(saved_stderr);
         }
     }
-    const result = c.parse_input("nonexistent_file.txt", &cfg, &sim);
+    const result = c.parse_input("nonexistent_file.tom", &cfg, &sim);
     try testing.expect(result != 0);
 }
 
