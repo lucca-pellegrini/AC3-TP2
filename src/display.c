@@ -399,9 +399,15 @@ void display_cycle(FILE *out, const Simulator *sim)
 	const char *cyan = C(out, ANSI_BR_CYAN);
 	const char *yellow = C(out, ANSI_BR_YELLOW);
 	const char *reset = C(out, ANSI_RESET);
+	const char *dim = C(out, ANSI_DIM);
 
-	fprintf(out, "%s%s\u2550\u2550\u2550 %sCycle %d%s%s%s \u2550\u2550\u2550%s\n", bold, cyan,
-		yellow, sim->cycle, reset, bold, cyan, reset);
+	// Display cycle count with filename
+	fprintf(out, "%s%s\u2550\u2550\u2550 %sCycle %d%s", bold, cyan, yellow, sim->cycle, reset);
+	if (sim->input_filename) {
+		fprintf(out, " %s(%s)%s", dim, sim->input_filename, reset);
+	}
+	fprintf(out, "%s%s \u2550\u2550\u2550%s\n", bold, cyan, reset);
+
 	display_instructions(out, sim);
 	display_rs(out, sim);
 	display_rob(out, sim);
@@ -427,10 +433,18 @@ void display_final(FILE *out, const Simulator *sim)
 	int cycles = sim->cycle > 0 ? sim->cycle : 1; // avoid div by zero
 
 	fprintf(out, "\n");
-	display_separator(out, 61, "SIMULATION COMPLETE");
+
+	// Show filename in the completion header
+	if (sim->input_filename) {
+		char header[128];
+		snprintf(header, sizeof(header), "SIMULATION COMPLETE - %s", sim->input_filename);
+		display_separator(out, 61, header);
+	} else {
+		display_separator(out, 61, "SIMULATION COMPLETE");
+	}
+
 	// ── Instruction Status Table ──
 	display_instructions(out, sim);
-
 
 	// Calculate performance metrics
 	double cpi = (sim->num_instructions > 0) ? (double)sim->cycle / sim->num_instructions : 0.0;

@@ -87,6 +87,9 @@ int main(int argc, char *argv[])
 	if (parse_input(input_path, &cfg, &sim) != 0)
 		return 1;
 
+	// Store the input filename in the simulator
+	sim.input_filename = input_path;
+
 	if (sim.num_instructions == 0) {
 		fprintf(stderr, "No valid instructions found.\n");
 		return 1;

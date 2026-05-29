@@ -167,6 +167,9 @@ typedef struct {
 
 	// Statistics (collected during simulation)
 	SimulatorStats stats;
+
+	// Input filename for display purposes
+	const char *input_filename;
 } Simulator;
 
 // ── Simulator API ───────────────────────────────────────────────────────────
