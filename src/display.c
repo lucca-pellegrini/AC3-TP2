@@ -6,6 +6,7 @@
 
 #include "display.h"
 
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -88,9 +89,10 @@ void display_instructions(FILE *out, const Simulator *sim)
 	const char *reset = C(out, ANSI_RESET);
 	const char *op_color = C(out, ANSI_BR_MAGENTA);
 	const char *reg_color = C(out, ANSI_BR_BLUE);
-	const char *issue_color = C(out, ANSI_YELLOW);
+	const char *issue_color = C(out, ANSI_GREEN);
 	const char *exec_color = C(out, ANSI_CYAN);
 	const char *write_color = C(out, ANSI_BR_GREEN);
+	const char *new_issue_marker = C(out, ANSI_BR_YELLOW);
 
 	display_separator(out, 61, "Instruction Status");
 
@@ -132,11 +134,32 @@ void display_instructions(FILE *out, const Simulator *sim)
 		if (inst->write_cycle > 0)
 			snprintf(write_s, sizeof(write_s), "%d", inst->write_cycle);
 
-		// Row index in dim, opcode in magenta, registers in blue, timings colored.
+		// Determine instruction state for styling
+		bool is_finished = (inst->write_cycle > 0);
+		bool just_issued = (inst->issue_cycle == sim->cycle);
+		bool in_flight = (inst->issue_cycle > 0 && !is_finished && !just_issued);
+
+		// Style the instruction info columns based on state:
+		// - Finished: dim/gray
+		// - Just issued (this cycle): bold + magenta, with asterisk
+		// - In-flight (issued previously, not finished): yellow
+		// - Not yet issued: normal magenta
+		const char *idx_color = (just_issued) ? bold : dim;
+		const char *curr_op_style = just_issued ? bold : "";
+		const char *curr_op_color = is_finished ? dim :
+							  (in_flight ? issue_color : op_color);
+		const char *curr_reg_color = is_finished ? dim : reg_color;
+
+		// Marker for just-issued instruction
+		const char *marker = just_issued ? "*" : " ";
+		const char *marker_color = just_issued ? new_issue_marker : "";
+		const char *marker_style = just_issued ? bold : "";
+
 		fprintf(out,
-			" %s%-4d%s  %s%-6s%s  %s%-4s %-4s %-4s%s  "
+			"%s%s%s%s%s%-4d%s  %s%s%-6s%s  %s%-4s %-4s %-4s%s  "
 			"%s%6s%s  %s%6s%s  %s%6s%s  %s%6s%s\n",
-			dim, i + 1, reset, op_color, opcode_name(inst->op), reset, reg_color,
+			marker_style, marker_color, marker, reset, idx_color, i + 1, reset,
+			curr_op_style, curr_op_color, opcode_name(inst->op), reset, curr_reg_color,
 			dest_buf, src1_buf, src2_buf, reset, issue_color, issue_s, reset,
 			exec_color, exec_s_s, reset, exec_color, exec_e_s, reset, write_color,
 			write_s, reset);
@@ -152,16 +175,18 @@ void display_rs(FILE *out, const Simulator *sim)
 	const char *reset = C(out, ANSI_RESET);
 	const char *name_color = C(out, ANSI_BR_BLUE);
 	const char *op_color = C(out, ANSI_BR_MAGENTA);
+	const char *op_exec_color = C(out, ANSI_BR_MAGENTA);
 	const char *busy_yes = C(out, ANSI_BR_GREEN);
 	const char *busy_no = C(out, ANSI_DIM);
 	const char *val_color = C(out, ANSI_CYAN);
 	const char *tag_color = C(out, ANSI_YELLOW);
+	const char *cycle_color = C(out, ANSI_BR_CYAN);
 
 	display_separator(out, 64, "Reservation Stations");
 
 	fprintf(out, "%s%s", bold, C(out, ANSI_UNDER));
-	fprintf(out, " %-6s  %-3s  %-6s  %8s  %8s  %4s  %4s  %4s  %4s", "Name", "Occ", "Op", "Vj",
-		"Vk", "Qj", "Qk", "Dest", "Cyc");
+	fprintf(out, " %-6s  %-4s  %-6s  %8s  %8s  %4s  %4s  %4s", "Name", "Tag", "Op", "Vj", "Vk",
+		"Qj", "Qk", "Cyc");
 	fprintf(out, "%s\n", reset);
 
 	for (int i = 0; i < sim->num_rs; i++) {
@@ -170,10 +195,14 @@ void display_rs(FILE *out, const Simulator *sim)
 		snprintf(name, sizeof(name), "%s%d", rs_type_prefix(rs->type), rs->unit_id);
 
 		if (!rs->busy) {
-			fprintf(out, " %s%-6s%s  %s%-3s%s\n", name_color, name, reset, busy_no,
-				"No", reset);
+			fprintf(out, " %s%-6s%s  %s%-4s%s\n", dim, name, reset, busy_no, "#0",
+				reset);
 			continue;
 		}
+
+		// Show ROB tag in Occ column (green, like ROB display)
+		char occ_buf[8];
+		snprintf(occ_buf, sizeof(occ_buf), "#%d", rs->dest);
 
 		char qj_buf[8], qk_buf[8];
 		if (rs->Qj)
@@ -185,13 +214,33 @@ void display_rs(FILE *out, const Simulator *sim)
 		else
 			snprintf(qk_buf, sizeof(qk_buf), "-");
 
+		// Use bold+yellow for executing instructions, regular magenta for waiting
+		const char *curr_op_style = rs->executing ? bold : "";
+		const char *curr_op_color = rs->executing ? op_exec_color : op_color;
+
+		// Cycle display: bold cyan = latency (not yet executing), regular cyan = countdown
+		int cyc_display;
+		const char *cyc_style;
+		const char *cyc_color;
+		if (rs->executing) {
+			// Executing: show countdown in regular cyan
+			cyc_display = rs->cycles_left;
+			cyc_style = "";
+			cyc_color = cycle_color;
+		} else {
+			// Not yet executing: show latency in bold cyan
+			cyc_display = sim->cfg.latency[rs->op];
+			cyc_style = bold;
+			cyc_color = cycle_color;
+		}
+
 		fprintf(out,
-			" %s%-6s%s  %s%-3s%s  %s%-6s%s  %s%8.2f%s  %s%8.2f%s  "
-			"%s%4s%s  %s%4s%s  %s%4d%s  %s%4d%s\n",
-			name_color, name, reset, busy_yes, "Yes", reset, op_color,
-			opcode_name(rs->op), reset, val_color, rs->Vj, reset, val_color, rs->Vk,
-			reset, tag_color, qj_buf, reset, tag_color, qk_buf, reset, dim, rs->dest,
-			reset, dim, rs->cycles_left, reset);
+			" %s%s%-6s%s  %s%s%-4s%s  %s%s%-6s%s  %s%8.2f%s  "
+			"%s%8.2f%s  %s%4s%s  %s%4s%s  %s%s%4d%s\n",
+			bold, name_color, name, reset, bold, busy_yes, occ_buf, reset,
+			curr_op_style, curr_op_color, opcode_name(rs->op), reset, val_color, rs->Vj,
+			reset, val_color, rs->Vk, reset, tag_color, qj_buf, reset, tag_color,
+			qk_buf, reset, cyc_style, cyc_color, cyc_display, reset);
 	}
 }
 
