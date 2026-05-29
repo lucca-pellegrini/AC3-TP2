@@ -5,7 +5,7 @@
 #        make release  (stripped + UPX compressed)
 #        make clean
 
-NAME     := tomasulo
+NAME     ?= tomasulo
 
 # Directories
 SRC_DIR  := src
