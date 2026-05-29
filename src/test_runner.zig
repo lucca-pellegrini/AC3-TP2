@@ -58,7 +58,7 @@ pub fn main() void {
     for (builtin.test_functions) |t| {
         if (t.name.len > max_name_len) max_name_len = t.name.len;
     }
-    if (max_name_len > 70) max_name_len = 70;
+    if (max_name_len > 120) max_name_len = 120;
 
     for (builtin.test_functions, 0..) |test_fn, i| {
         std.testing.allocator_instance = .{};
