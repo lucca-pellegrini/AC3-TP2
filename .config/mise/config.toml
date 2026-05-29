@@ -11,4 +11,4 @@ run = "zig build test"
 
 [tasks.run]
 description = "Run the simulator with a test input"
-run = "zig build run -- tests/input_basic.txt -b"
+run = "zig build run"
