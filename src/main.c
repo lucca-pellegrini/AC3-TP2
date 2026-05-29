@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 		sim_step(&sim);
 
 		if (mode == DISPLAY_INTERACTIVE) {
-			fprintf(out, "\033[2J\033[H");
+			fprintf(out, "\n\033[2J\033[H");
 			display_cycle(out, &sim);
 			fflush(stdout);
 			if (out == stdout) {
@@ -148,6 +148,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		} else if (mode == DISPLAY_BATCH) {
+			fprintf(out, "\n"); // Separate cycles
 			display_cycle(out, &sim);
 		}
 	}
