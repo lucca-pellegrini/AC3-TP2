@@ -46,7 +46,8 @@ endif
 
 # Debug mode
 ifdef DEBUG
-    CFLAGS += -g -DDEBUG
+    CFLAGS += -g -DDEBUG --debug -O0
+    GEN_CFLAGS += -g -DDEBUG --debug -O0
 endif
 
 # Hand-written sources
