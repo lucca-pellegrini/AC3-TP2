@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: ISC
-// SPDX-FileCopyrightText: Copyright (c) 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+// SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
 // NOTE: Test harness and some unit tests written with help from LLMs
 
 //! Property-based / fuzz tests using random data.
