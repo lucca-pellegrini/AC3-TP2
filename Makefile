@@ -57,7 +57,7 @@ OBJS     := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 # Generated sources
 GEN_C    := $(GEN_DIR)/parser.tab.c $(GEN_DIR)/lex.parser.c
 GEN_H    := $(GEN_DIR)/parser.tab.h
-GEN_O    := $(GEN_C:.c=.o)
+GEN_O    := $(patsubst $(GEN_DIR)/%.o,$(OBJ_DIR)/%.o,$(GEN_C:.c=.o))
 
 # Final binary
 BIN      := $(OUT_DIR)/$(NAME)
@@ -73,8 +73,9 @@ endif
 
 # ccache support
 ifeq ($(shell which ccache 2>/dev/null),)
+    CC_WRAPPER :=
 else
-    CC := ccache $(CC)
+    CC_WRAPPER := ccache
 endif
 
 # compiledb (clangd) support
@@ -90,29 +91,41 @@ all: $(BIN)
 
 # ====================== Generated Parser/Lexer ======================
 
-$(GEN_DIR)/parser.tab.c $(GEN_DIR)/parser.tab.h: $(SRC_DIR)/parser.y | $(GEN_DIR)
-	$(YACC) $(YFLAGS) -o $(GEN_DIR)/parser.tab.c $<
+Y_SRCS := $(wildcard $(SRC_DIR)/*.y)
+L_SRCS := $(wildcard $(SRC_DIR)/*.l)
 
-$(GEN_DIR)/lex.parser.c: $(SRC_DIR)/parser.l $(GEN_DIR)/parser.tab.h | $(GEN_DIR)
+Y_GEN_C := $(patsubst $(SRC_DIR)/%.y,$(GEN_DIR)/%.tab.c,$(Y_SRCS))
+Y_GEN_H := $(patsubst $(SRC_DIR)/%.y,$(GEN_DIR)/%.tab.h,$(Y_SRCS))
+L_GEN_C := $(patsubst $(SRC_DIR)/%.l,$(GEN_DIR)/lex.%.c,$(L_SRCS))
+
+GEN_C := $(Y_GEN_C) $(L_GEN_C)
+GEN_H := $(Y_GEN_H)
+
+# Bison
+$(GEN_DIR)/%.tab.c $(GEN_DIR)/%.tab.h: $(SRC_DIR)/%.y | $(GEN_DIR)
+	$(YACC) $(YFLAGS) -o $(GEN_DIR)/$*.tab.c $<
+
+# Flex
+$(GEN_DIR)/lex.%.c: $(SRC_DIR)/%.l $(GEN_DIR)/%.tab.h | $(GEN_DIR)
 	$(LEX) -o $@ $<
 
 # ====================== Compilation Rules ======================
 
 # Hand-written sources
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(GEN_H) | $(OBJ_DIR)
-	$(CC) -I$(INC_DIR) -I$(GEN_DIR) $(CFLAGS) -c $< -o $@
+	$(CC_WRAPPER) $(CC) -I$(INC_DIR) -I$(GEN_DIR) $(CFLAGS) -c $< -o $@
 
 # Generated sources (relaxed warnings)
-$(GEN_O): $(GEN_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_H) | $(GEN_DIR)
-	$(CC) -I$(INC_DIR) -I$(GEN_DIR) $(GEN_CFLAGS) -c $< -o $@
+$(GEN_O): $(OBJ_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_H) | $(GEN_DIR)
+	$(CC_WRAPPER) $(CC) -I$(INC_DIR) -I$(GEN_DIR) $(GEN_CFLAGS) -c $< -o $@
 
 # Create directories
-$(OBJ_DIR) $(GEN_DIR):
+$(OUT_DIR) $(OBJ_DIR) $(GEN_DIR):
 	$(MKDIR) $@
 
 # Linking
 $(BIN): $(OBJS) $(GEN_O) | $(OUT_DIR)
-	$(CC) $(LDFLAGS) $^ -o $@
+	$(CC_WRAPPER) $(CC) $(LDFLAGS) $^ -o $@
 
 # ====================== Release & PGO ======================
 
