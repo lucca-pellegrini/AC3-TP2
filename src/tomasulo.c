@@ -12,6 +12,7 @@
 #endif
 #include "tomasulo.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <string.h>
 #include <strings.h>
@@ -346,10 +347,12 @@ static void stage_execute(Simulator *sim)
 		if (rob->state == ROB_WRITE_RESULT)
 			continue;
 
-		bool is_arith = (rs->op == OP_ADDD || rs->op == OP_SUBD || rs->op == OP_MULTD ||
-				 rs->op == OP_DIVD);
-
-		if (is_arith || rs->op == OP_LD) {
+		switch (rs->op) {
+		case OP_ADDD:
+		case OP_SUBD:
+		case OP_MULTD:
+		case OP_DIVD:
+		case OP_LD:
 			if (rs->Qj != 0 || rs->Qk != 0)
 				continue;
 
@@ -368,7 +371,8 @@ static void stage_execute(Simulator *sim)
 				rob->state = ROB_WRITE_RESULT;
 				inst->exec_end = sim->cycle;
 			}
-		} else if (rs->op == OP_SD) {
+			break;
+		case OP_SD:
 			// Store: two phases
 			// Phase 1: compute address (needs Qk = base)
 			if (rs->Qk == 0 && !rob->addr_ready) {
@@ -393,6 +397,9 @@ static void stage_execute(Simulator *sim)
 					inst->exec_end = sim->cycle;
 				}
 			}
+			break;
+		default:
+			assert(false);
 		}
 	}
 }
