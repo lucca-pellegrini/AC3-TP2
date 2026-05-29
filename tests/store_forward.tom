@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Store and load patterns testing memory ordering.
+#
+# This test exercises store buffers and load buffers with a mix of
+# independent and dependent memory operations:
+#
+# 1. Multiple loads to different addresses (can run in parallel)
+# 2. Compute on loaded values
+# 3. Store results back
+# 4. More loads from different addresses
+#
+# Expected values (loads return offset + base):
+#   F0 = 0 + 100 = 100
+#   F1 = 8 + 100 = 108
+#   F2 = 100 + 108 = 208
+#   F3 = 100 * 2 = 200
+#   Store F2 to addr 132 (32 + 100)
+#   Store F3 to addr 140 (40 + 100)
+#   F4 = 0 + 200 = 200
+#   F5 = 8 + 200 = 208
+#   F6 = 200 + 208 = 408
+
+cycles {
+    add.d  = 2
+    mult.d = 4
+    l.d    = 2
+    s.d    = 2
+}
+
+units {
+    add.d  = 2
+    mult.d = 1
+    l.d    = 3
+    s.d    = 2
+}
+
+registers {
+    R1 = 100
+    R2 = 200
+    F10 = 2.0   # constant multiplier
+}
+
+instructions {
+    # First batch of loads (parallel)
+    L.D   F0 0(R1)      # F0 = 100
+    L.D   F1 8(R1)      # F1 = 108
+    # Compute on loaded values
+    ADD.D F2 F0 F1      # F2 = 208
+    MUL.D F3 F0 F10     # F3 = 200
+    # Store results
+    S.D   F2 32(R1)     # store 208 to addr 132
+    S.D   F3 40(R1)     # store 200 to addr 140
+    # Second batch of loads (different base)
+    L.D   F4 0(R2)      # F4 = 200
+    L.D   F5 8(R2)      # F5 = 208
+    # Final computation
+    ADD.D F6 F4 F5      # F6 = 408
+}

@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Single matrix element computation: C[i,j] = sum(A[i,k] * B[k,j])
+#
+# This is the inner loop of matrix multiplication, computing one
+# element of the result matrix. We load row i of A and column j of B,
+# multiply corresponding elements, and sum them up.
+#
+# For a 3x3 matrix:
+#   Row A[i]: [1, 2, 3] loaded from memory
+#   Col B[j]: [4, 5, 6] loaded from memory
+#   C[i,j] = 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
+#
+# This exercises load-multiply-add patterns with memory operations
+# and demonstrates how the load buffers can feed multiple consumers.
+
+cycles {
+    add.d  = 2
+    mult.d = 4
+    l.d    = 2
+}
+
+units {
+    add.d  = 2
+    mult.d = 2
+    l.d    = 3
+}
+
+registers {
+    R1 = 100    # base address for row A[i]
+    R2 = 200    # base address for col B[j]
+}
+
+instructions {
+    # Load row A[i] elements
+    L.D F0 0(R1)        # A[i,0] -> 0+100 = 100
+    L.D F1 8(R1)        # A[i,1] -> 8+100 = 108
+    L.D F2 16(R1)       # A[i,2] -> 16+100 = 116
+    # Load col B[j] elements
+    L.D F3 0(R2)        # B[0,j] -> 0+200 = 200
+    L.D F4 8(R2)        # B[1,j] -> 8+200 = 208
+    L.D F5 16(R2)       # B[2,j] -> 16+200 = 216
+    # Multiply pairs
+    MUL.D F6 F0 F3      # 100 * 200 = 20000
+    MUL.D F7 F1 F4      # 108 * 208 = 22464
+    MUL.D F8 F2 F5      # 116 * 216 = 25056
+    # Sum reduction
+    ADD.D F9 F6 F7      # 20000 + 22464 = 42464
+    ADD.D F10 F9 F8     # 42464 + 25056 = 67520  (C[i,j])
+}

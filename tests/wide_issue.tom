@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Maximum issue width stress test.
+#
+# This test creates a large number of completely independent operations
+# to stress the issue logic and reservation station allocation. With
+# enough functional units, many of these can execute simultaneously.
+#
+# 6 independent loads + 4 independent muls + 4 independent adds = 14 ops
+# All can potentially issue on consecutive cycles and many can execute
+# in parallel, stressing CDB arbitration.
+#
+# Expected (loads return offset + base):
+#   F0  = 0+100 = 100,   F1 = 8+100 = 108,   F2 = 16+100 = 116
+#   F3  = 0+200 = 200,   F4 = 8+200 = 208,   F5 = 16+200 = 216
+#   F10 = 2*3 = 6,       F11 = 4*5 = 20
+#   F12 = 6*7 = 42,      F13 = 8*9 = 72
+#   F14 = 1+2 = 3,       F15 = 3+4 = 7
+#   F16 = 5+6 = 11,      F17 = 7+8 = 15
+
+cycles {
+    add.d  = 2
+    mult.d = 4
+    l.d    = 2
+    s.d    = 2
+}
+
+units {
+    add.d  = 4
+    mult.d = 4
+    l.d    = 4
+    s.d    = 2
+}
+
+registers {
+    R1 = 100
+    R2 = 200
+    # Constants for arithmetic
+    F20 = 1.0
+    F21 = 2.0
+    F22 = 3.0
+    F23 = 4.0
+    F24 = 5.0
+    F25 = 6.0
+    F26 = 7.0
+    F27 = 8.0
+    F28 = 9.0
+}
+
+instructions {
+    # 6 independent loads
+    L.D   F0 0(R1)
+    L.D   F1 8(R1)
+    L.D   F2 16(R1)
+    L.D   F3 0(R2)
+    L.D   F4 8(R2)
+    L.D   F5 16(R2)
+    # 4 independent multiplies
+    MUL.D F10 F21 F22   # 2 * 3 = 6
+    MUL.D F11 F23 F24   # 4 * 5 = 20
+    MUL.D F12 F25 F26   # 6 * 7 = 42
+    MUL.D F13 F27 F28   # 8 * 9 = 72
+    # 4 independent adds
+    ADD.D F14 F20 F21   # 1 + 2 = 3
+    ADD.D F15 F22 F23   # 3 + 4 = 7
+    ADD.D F16 F24 F25   # 5 + 6 = 11
+    ADD.D F17 F26 F27   # 7 + 8 = 15
+}

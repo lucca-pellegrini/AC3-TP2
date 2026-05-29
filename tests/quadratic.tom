@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Quadratic formula computation: (-b + sqrt(b²-4ac)) / 2a
+#
+# Since we don't have SQRT, we'll compute the discriminant and
+# pretend we have a pre-computed sqrt value. This demonstrates
+# the computation graph of a real formula.
+#
+# For a=1, b=5, c=6 (roots at x=-2, x=-3):
+#   discriminant = b² - 4ac = 25 - 24 = 1
+#   sqrt(discriminant) = 1 (we'll use precomputed)
+#   -b = -5
+#   numerator = -b + sqrt = -5 + 1 = -4
+#   denominator = 2a = 2
+#   root = -4 / 2 = -2
+#
+# Computation graph:
+#   F10 = b * b = 25           (b²)
+#   F11 = 4 * a = 4            (4a)
+#   F12 = F11 * c = 24         (4ac)
+#   F13 = F10 - F12 = 1        (discriminant)
+#   (F14 = 1 is our "sqrt" - precomputed)
+#   F15 = 0 - b = -5           (-b)
+#   F16 = F15 + F14 = -4       (numerator)
+#   F17 = 2 * a = 2            (2a)
+#   F18 = F16 / F17 = -2       (root)
+
+cycles {
+    add.d  = 2
+    sub.d  = 2
+    mult.d = 4
+    div.d  = 12
+}
+
+units {
+    add.d  = 2
+    mult.d = 2
+}
+
+registers {
+    F0 = 1.0    # a
+    F1 = 5.0    # b
+    F2 = 6.0    # c
+    F3 = 4.0    # constant 4
+    F4 = 2.0    # constant 2
+    F5 = 0.0    # constant 0 (for negation)
+    F14 = 1.0   # precomputed sqrt(discriminant)
+}
+
+instructions {
+    MUL.D F10 F1 F1     # b² = 25
+    MUL.D F11 F3 F0     # 4a = 4
+    MUL.D F12 F11 F2    # 4ac = 24 (depends on F11)
+    SUB.D F13 F10 F12   # discriminant = 1 (depends on F10, F12)
+    SUB.D F15 F5 F1     # -b = -5 (independent)
+    ADD.D F16 F15 F14   # -b + sqrt = -4 (depends on F15)
+    MUL.D F17 F4 F0     # 2a = 2 (independent)
+    DIV.D F18 F16 F17   # root = -2 (depends on F16, F17)
+}

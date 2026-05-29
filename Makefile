@@ -150,7 +150,7 @@ pgo: clean
 	@echo "=== Generating PGO profile ==="
 	$(MAKE) all CFLAGS="$(CFLAGS) -fprofile-generate" LDFLAGS="$(LDFLAGS) -fprofile-generate"
 	@echo "=== Running tests for profile data ==="
-	@for test in tests/input_*.tom; do \
+	@for test in tests/*.tom; do \
 		echo "  Running $$test"; \
 		$(BIN) $$test -q; \
 	done
@@ -172,7 +172,7 @@ run-release: $(BIN)-release
 # Test each executable
 test-stripped: $(BIN)-stripped
 	@echo "=== Running all tests ==="
-	@for f in tests/input_*.tom; do \
+	@for f in tests/*.tom; do \
 		cols=$$(tput cols 2>/dev/null || echo 120); \
 		[ $$cols -gt 120 ] && cols=120; \
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
@@ -183,7 +183,7 @@ test-stripped: $(BIN)-stripped
 	@echo "All tests passed."
 test-release: $(BIN)-release
 	@echo "=== Running all tests ==="
-	@for f in tests/input_*.tom; do \
+	@for f in tests/*.tom; do \
 		cols=$$(tput cols 2>/dev/null || echo 120); \
 		[ $$cols -gt 120 ] && cols=120; \
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
@@ -194,7 +194,7 @@ test-release: $(BIN)-release
 	@echo "All tests passed."
 test: $(BIN)
 	@echo "=== Running all tests ==="
-	@for f in tests/input_*.tom; do \
+	@for f in tests/*.tom; do \
 		cols=$$(tput cols 2>/dev/null || echo 120); \
 		[ $$cols -gt 120 ] && cols=120; \
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \

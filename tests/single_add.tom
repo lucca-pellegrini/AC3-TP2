@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Absolute minimal test: single ADD instruction.
+#
+# Even simpler than minimal.tom - this is the most basic
+# possible program that still does something meaningful.
+# Tests that the simulator handles the edge case of exactly
+# one instruction gracefully.
+#
+# Expected: F0 = 1 + 1 = 2
+
+cycles {
+    add.d = 1
+}
+
+units {
+    add.d = 1
+}
+
+registers {
+    F1 = 1.0
+}
+
+instructions {
+    ADD.D F0 F1 F1      # F0 = 1 + 1 = 2
+}

@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Minimal test: single instruction with immediate operands.
+#
+# The absolute simplest test case - one ADD with two ready operands.
+# No hazards, no dependencies, no contention. Just verify the basics work.
+#
+# Expected: F2 = F0 + F1 = 1 + 2 = 3
+
+cycles {
+    add.d = 2
+}
+
+units {
+    add.d = 1
+}
+
+registers {
+    F0 = 1.0
+    F1 = 2.0
+}
+
+instructions {
+    ADD.D F2 F0 F1      # 1 + 2 = 3
+}

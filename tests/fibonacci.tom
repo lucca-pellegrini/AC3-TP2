@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Fibonacci-style computation (unrolled, no branches).
+#
+# Since we can't loop, we unroll several iterations of the recurrence:
+#   fib(n) = fib(n-1) + fib(n-2)
+#
+# Start with F0 = 1.0 (fib_0), F1 = 1.0 (fib_1), then compute:
+#   F2 = F0 + F1 = 2   (fib_2)
+#   F3 = F1 + F2 = 3   (fib_3)
+#   F4 = F2 + F3 = 5   (fib_4)
+#   F5 = F3 + F4 = 8   (fib_5)
+#   F6 = F4 + F5 = 13  (fib_6)
+#   F7 = F5 + F6 = 21  (fib_7)
+#
+# This creates a strict sequential dependency chain where each ADD
+# depends on the previous two results. With a single adder, each
+# instruction must wait; with multiple adders, there's still no
+# parallelism due to the data dependencies.
+
+cycles {
+    add.d = 2
+}
+
+units {
+    add.d = 3   # multiple adders, but chain is serial anyway
+}
+
+registers {
+    F0 = 1.0    # fib_0
+    F1 = 1.0    # fib_1
+}
+
+instructions {
+    ADD.D F2 F0 F1      # fib_2 = 1 + 1 = 2
+    ADD.D F3 F1 F2      # fib_3 = 1 + 2 = 3
+    ADD.D F4 F2 F3      # fib_4 = 2 + 3 = 5
+    ADD.D F5 F3 F4      # fib_5 = 3 + 5 = 8
+    ADD.D F6 F4 F5      # fib_6 = 5 + 8 = 13
+    ADD.D F7 F5 F6      # fib_7 = 8 + 13 = 21
+}

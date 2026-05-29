@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Producer-consumer pattern with multiple consumers.
+#
+# One "producer" instruction generates a value that multiple
+# "consumers" need. This tests the CDB broadcast mechanism:
+# when F10 is ready, all waiting reservation stations should
+# capture it simultaneously.
+#
+# Setup:
+#   Producer: MUL.D F10 = 6 * 7 = 42
+#   Consumers: Four ADDs all waiting for F10
+#
+# Expected:
+#   F10 = 6 * 7 = 42     (producer)
+#   F11 = F10 + 1 = 43   (consumer 1)
+#   F12 = F10 + 2 = 44   (consumer 2)
+#   F13 = F10 + 3 = 45   (consumer 3)
+#   F14 = F10 + 4 = 46   (consumer 4)
+#
+# With 4 Add units, all consumers can start executing on the same
+# cycle that F10 broadcasts, and then they contend for the CDB.
+
+cycles {
+    add.d  = 2
+    mult.d = 6
+}
+
+units {
+    add.d  = 4
+    mult.d = 1
+}
+
+registers {
+    F0 = 6.0
+    F1 = 7.0
+    F2 = 1.0
+    F3 = 2.0
+    F4 = 3.0
+    F5 = 4.0
+}
+
+instructions {
+    MUL.D F10 F0 F1     # producer: F10 = 42
+    ADD.D F11 F10 F2    # consumer 1: waits for F10, then F11 = 43
+    ADD.D F12 F10 F3    # consumer 2: waits for F10, then F12 = 44
+    ADD.D F13 F10 F4    # consumer 3: waits for F10, then F13 = 45
+    ADD.D F14 F10 F5    # consumer 4: waits for F10, then F14 = 46
+}

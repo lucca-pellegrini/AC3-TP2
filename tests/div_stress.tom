@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Division-heavy stress test.
+#
+# Division is typically the longest-latency FP operation. This test
+# queues up multiple divisions to stress the divider and exercise
+# CDB contention when they complete close together.
+#
+# We also mix in some fast operations that can complete while the
+# divisions are in flight, showing how shorter-latency operations
+# can bypass waiting divisions (out-of-order execution).
+#
+# Expected:
+#   F10 = 100 / 5 = 20
+#   F11 = 200 / 4 = 50
+#   F12 = 300 / 3 = 100
+#   F13 = 400 / 2 = 200
+#   F14 = F0 + F1 = 105  (fast, completes while divs running)
+#   F15 = F2 + F3 = 307  (fast, completes while divs running)
+#   F16 = F10 + F11 = 70 (waits for divs)
+#   F17 = F12 + F13 = 300 (waits for divs)
+
+cycles {
+    add.d  = 2
+    div.d  = 20
+}
+
+units {
+    add.d  = 2
+    mult.d = 1   # need mult unit defined for div
+}
+
+registers {
+    F0 = 100.0
+    F1 = 5.0
+    F2 = 200.0
+    F3 = 4.0
+    F4 = 300.0
+    F5 = 3.0
+    F6 = 400.0
+    F7 = 2.0
+}
+
+instructions {
+    # Queue up multiple long divisions
+    DIV.D F10 F0 F1     # 100 / 5 = 20
+    DIV.D F11 F2 F3     # 200 / 4 = 50
+    DIV.D F12 F4 F5     # 300 / 3 = 100
+    DIV.D F13 F6 F7     # 400 / 2 = 200
+    # Fast adds that can bypass (independent of divs)
+    ADD.D F14 F0 F1     # 100 + 5 = 105
+    ADD.D F15 F4 F5     # 300 + 3 = 303
+    # These must wait for the divisions
+    ADD.D F16 F10 F11   # 20 + 50 = 70
+    ADD.D F17 F12 F13   # 100 + 200 = 300
+}

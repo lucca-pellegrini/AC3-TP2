@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Write-After-Read (WAR) hazard demonstration.
+#
+# In a naive pipeline, if a later instruction writes to a register that
+# an earlier instruction is still reading, we get a WAR hazard. Tomasulo's
+# algorithm handles this via register renaming: each producer gets its
+# own reservation station tag, so readers always get the correct value.
+#
+# Setup:
+#   1. ADD.D reads F2 (value 10) and writes to F4
+#   2. MUL.D reads F2 (value 10) and writes to F6
+#   3. SUB.D overwrites F2 with a new value (this is the WAR)
+#   4. ADD.D reads the NEW F2 to prove renaming worked
+#
+# The first two instructions must see F2 = 10, the last one sees F2 = 3.
+#
+# Expected:
+#   F4 = F2 + F3 = 10 + 5 = 15
+#   F6 = F2 * F3 = 10 * 5 = 50
+#   F2 = F0 - F1 = 8 - 5 = 3    (overwrites F2)
+#   F8 = F2 + F1 = 3 + 5 = 8    (reads NEW F2)
+
+cycles {
+    add.d  = 2
+    sub.d  = 2
+    mult.d = 6
+}
+
+units {
+    add.d  = 2
+    mult.d = 1
+}
+
+registers {
+    F0 = 8.0
+    F1 = 5.0
+    F2 = 10.0
+    F3 = 5.0
+}
+
+instructions {
+    ADD.D F4 F2 F3      # reads F2=10, F4 = 15
+    MUL.D F6 F2 F3      # reads F2=10, F6 = 50
+    SUB.D F2 F0 F1      # WAR: overwrites F2 with 3
+    ADD.D F8 F2 F1      # must read new F2=3, F8 = 8
+}

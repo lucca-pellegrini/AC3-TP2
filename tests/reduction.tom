@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# Parallel reduction (sum of 8 elements using tree reduction).
+#
+# Given 8 values, compute their sum using a balanced binary tree
+# pattern that maximizes parallelism:
+#
+# Level 0 (4 independent adds):
+#   F10 = F0 + F1 = 1 + 2 = 3
+#   F11 = F2 + F3 = 3 + 4 = 7
+#   F12 = F4 + F5 = 5 + 6 = 11
+#   F13 = F6 + F7 = 7 + 8 = 15
+#
+# Level 1 (2 independent adds):
+#   F14 = F10 + F11 = 3 + 7 = 10
+#   F15 = F12 + F13 = 11 + 15 = 26
+#
+# Level 2 (final):
+#   F16 = F14 + F15 = 10 + 26 = 36
+#
+# With enough adders, level 0 executes in parallel, then level 1,
+# then level 2. Total depth = 3 additions (log2(8) = 3).
+
+cycles {
+    add.d = 2
+}
+
+units {
+    add.d = 4   # enough for full level-0 parallelism
+}
+
+registers {
+    F0 = 1.0
+    F1 = 2.0
+    F2 = 3.0
+    F3 = 4.0
+    F4 = 5.0
+    F5 = 6.0
+    F6 = 7.0
+    F7 = 8.0
+}
+
+instructions {
+    # Level 0: 4 parallel adds
+    ADD.D F10 F0 F1     # 1 + 2 = 3
+    ADD.D F11 F2 F3     # 3 + 4 = 7
+    ADD.D F12 F4 F5     # 5 + 6 = 11
+    ADD.D F13 F6 F7     # 7 + 8 = 15
+    # Level 1: 2 parallel adds
+    ADD.D F14 F10 F11   # 3 + 7 = 10
+    ADD.D F15 F12 F13   # 11 + 15 = 26
+    # Level 2: final sum
+    ADD.D F16 F14 F15   # 10 + 26 = 36
+}

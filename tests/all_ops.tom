@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: This test file was written with help from LLMs
+
+# All operations test: one of each instruction type.
+#
+# A simple test that exercises every supported operation exactly once,
+# all independent of each other (no RAW hazards). This is useful for
+# verifying basic functionality of all unit types.
+#
+# Expected:
+#   F10 = 8 + 100 = 108   (L.D)
+#   F11 = 10 + 5 = 15     (ADD.D)
+#   F12 = 10 - 3 = 7      (SUB.D)
+#   F13 = 4 * 5 = 20      (MUL.D)
+#   F14 = 20 / 4 = 5      (DIV.D)
+#   S.D stores 15 to addr 116
+
+cycles {
+    add.d  = 2
+    sub.d  = 2
+    mult.d = 4
+    div.d  = 12
+    l.d    = 2
+    s.d    = 2
+}
+
+units {
+    add.d  = 1
+    mult.d = 1
+    l.d    = 1
+    s.d    = 1
+}
+
+registers {
+    R1 = 100
+    F0 = 10.0
+    F1 = 5.0
+    F2 = 3.0
+    F3 = 4.0
+    F4 = 20.0
+}
+
+instructions {
+    L.D   F10 8(R1)     # load: F10 = 108
+    ADD.D F11 F0 F1     # add:  F11 = 15
+    SUB.D F12 F0 F2     # sub:  F12 = 7
+    MUL.D F13 F3 F1     # mul:  F13 = 20
+    DIV.D F14 F4 F3     # div:  F14 = 5
+    S.D   F11 16(R1)    # store: Mem[116] = 15
+}
