@@ -1,5 +1,0 @@
-CompileFlags:
-  Add:
-    - "-std=c23"
-    - "-D_GNU_SOURCE"
-    - "-Isrc"
