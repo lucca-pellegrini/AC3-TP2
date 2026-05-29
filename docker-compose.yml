@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# NOTE: docker-compose file written by an LLM
+
+services:
+  # Run the program
+  tomasulo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    stdin_open: true
+    tty: false
+    init: true
+    entrypoint: ["/usr/local/bin/tomasulo"]
+    volumes:
+      - ./tests:/app/tests:ro
+
+  # Development environment with all build tools
+  tomasulo-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: tomasulo-dev
+    volumes:
+      - .:/app
+      - zig-cache:/app/.zig-cache
+      - build-cache:/app/build
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+  # Zig build service (for CI/CD)
+  tomasulo-zig-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: zig-build
+    container_name: tomasulo-zig-build
+    volumes:
+      - ./zig-out:/app/zig-out
+
+  # Make build service (for CI/CD)
+  tomasulo-make-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: make-build
+    container_name: tomasulo-make-build
+    volumes:
+      - ./build:/app/build
+
+  # Test runner service
+  tomasulo-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: zig-build
+    container_name: tomasulo-test
+    command: zig build test
+
+volumes:
+  zig-cache:
+  build-cache:

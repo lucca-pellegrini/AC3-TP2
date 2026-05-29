@@ -1,0 +1,31 @@
+# Build artifacts
+zig-out/
+.zig-cache/
+build/
+*.o
+*.a
+*.so
+*.gcda
+*.profraw
+*.profdata
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Docker files (don't copy themselves)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation (optional, uncomment if you don't need docs in build)
+# *.md
+# docs/
