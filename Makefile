@@ -80,14 +80,14 @@ endif
 
 # compiledb (clangd) support
 ifeq ($(shell which compiledb 2>/dev/null),)
-    CC_JSON :=
+    COMPILE_COMMANDS_JSON :=
 else
-    CC_JSON := $(OUT_DIR)/compile_commands.json
+    COMPILE_COMMANDS_JSON := $(OUT_DIR)/compile_commands.json
 endif
 
 .PHONY: all run test release clean pgo
 
-all: $(BIN)
+all: $(COMPILE_COMMANDS_JSON) $(BIN)
 
 # ====================== Generated Parser/Lexer ======================
 
@@ -185,8 +185,8 @@ test: $(BIN)
 	done
 	@echo "All tests passed."
 
-$(CC_JSON): Makefile | $(OUT_DIR)
-	compiledb -nfo $@ make CC=clang --no-color
+$(COMPILE_COMMANDS_JSON): Makefile | $(OUT_DIR)
+	compiledb -nfo $@ make CC=clang
 
 clean:
 	$(RM) $(BIN) $(BIN)-stripped $(BIN)-release
