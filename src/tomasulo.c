@@ -376,7 +376,8 @@ static void stage_execute(Simulator *sim)
 				rob->addr_ready = true;
 			}
 
-			if (!rs->executing && rob->addr_ready) {
+			// Only start executing when BOTH address AND value are ready
+			if (!rs->executing && rob->addr_ready && rs->Qj == 0) {
 				rs->executing = true;
 				rs->cycles_left = sim->cfg.latency[rs->op];
 				rob->state = ROB_EXECUTING;
@@ -385,8 +386,8 @@ static void stage_execute(Simulator *sim)
 
 			if (rs->executing) {
 				rs->cycles_left--;
-				// Phase 2: when addr ready AND value ready AND cycles done
-				if (rs->cycles_left <= 0 && rs->Qj == 0 && rob->addr_ready) {
+				// Phase 2: when cycles done
+				if (rs->cycles_left <= 0) {
 					rob->value = rs->Vj;
 					rob->state = ROB_WRITE_RESULT;
 					inst->exec_end = sim->cycle;
