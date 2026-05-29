@@ -26,6 +26,18 @@ GEN_CFLAGS := $(CFLAGS) -Wno-unused-function -Wno-unused-but-set-variable
 LDFLAGS  += -lm
 YFLAGS   := -d --warnings=no-yacc
 
+# Use static linking if compiler is musl
+ifneq ($(findstring musl-,$(CC)),)
+    LDFLAGS += -static
+endif
+
+# Ignore unused arguments when using a clang-like compiler
+CC_VERSION := $(shell $(CC) --version 2>/dev/null)
+ifneq ($(findstring clang,$(CC_VERSION)),)
+    CFLAGS += -Wno-unused-command-line-argument
+    GEN_CFLAGS += -Wno-unused-command-line-argument
+endif
+
 # FLTO support
 ifdef FLTO
     CFLAGS  += -flto=auto
