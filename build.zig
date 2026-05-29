@@ -21,8 +21,7 @@ const c_flags = &.{
     "-D_GNU_SOURCE",
 };
 
-// Generated flex/bison sources tend to trip strict warnings; relax just
-// for them.
+// Generated flex/bison sources tend to trip strict warnings
 const gen_c_flags = &.{
     "-std=c23",
     "-D_GNU_SOURCE",
@@ -31,7 +30,6 @@ const gen_c_flags = &.{
 };
 
 // Run bison on `parser.y`, producing parser.tab.c and parser.tab.h.
-// Returns LazyPaths for the generated .c and .h files plus the run step.
 const BisonOutputs = struct {
     c: std.Build.LazyPath,
     h: std.Build.LazyPath,
@@ -47,14 +45,11 @@ fn runBison(b: *std.Build) BisonOutputs {
     run.addArg("-o");
     const tab_c = run.addOutputFileArg("build/gen/parser.tab.c");
     run.addFileArg(b.path("src/parser.y"));
-    // Bison writes parser.tab.h alongside parser.tab.c, so derive the
-    // header path from the same generated directory.
     const tab_h = tab_c.dirname().path(b, "parser.tab.h");
     return .{ .c = tab_c, .h = tab_h, .step = &run.step };
 }
 
-// Run flex on `parser.l`, producing the scanner .c file.  Depends on
-// the bison output to ensure parser.tab.h exists when flex runs.
+// Run flex on `parser.l`, producing the scanner .c file.
 fn runFlex(b: *std.Build, bison_h: std.Build.LazyPath) std.Build.LazyPath {
     const tool = b.findProgram(&.{ "flex", "lex" }, &.{}) catch {
         std.debug.panic("flex/lex not found in PATH", .{});
@@ -63,15 +58,11 @@ fn runFlex(b: *std.Build, bison_h: std.Build.LazyPath) std.Build.LazyPath {
     run.addArg("-o");
     const out = run.addOutputFileArg("build/gen/lex.parser.c");
     run.addFileArg(b.path("src/parser.l"));
-    // Make sure parser.tab.h exists before flex runs, since parser.l
-    // %includes it.
-    _ = bison_h;
+    _ = bison_h; // Make sure parser.tab.h exists before flex runs.
     return out;
 }
 
-// Attach the generated parser+scanner sources to a module.  The
-// generated parser.tab.h is added as an include path so parser.c (and
-// the rest of the module) can find it.
+// Attach the generated parser/scanner sources to a module.
 fn addGeneratedParser(b: *std.Build, mod: *std.Build.Module) void {
     const bison = runBison(b);
     const lex_c = runFlex(b, bison.h);
@@ -84,15 +75,10 @@ fn addGeneratedParser(b: *std.Build, mod: *std.Build.Module) void {
         .file = lex_c,
         .flags = gen_c_flags,
     });
-    // The generated header is in the same directory as parser.tab.c.
-    mod.addIncludePath(bison.c.dirname());
+    mod.addIncludePath(bison.c.dirname()); // Header in the same dir.
 }
 
 pub fn build(b: *std.Build) void {
-    // ── Target & Optimization ───────────────────────────────────────
-    //
-    // Default target is x86_64-linux-musl for fully static binaries,
-    // but can be overridden via `zig build -Dtarget=...`
     const target = b.standardTargetOptions(.{
         .default_target = .{
             .cpu_arch = .x86_64,
@@ -102,7 +88,7 @@ pub fn build(b: *std.Build) void {
     });
     const optimize = b.standardOptimizeOption(.{});
 
-    // ── Main Executable ─────────────────────────────────────────────
+    // Main executable
 
     const exe_mod = b.createModule(.{
         .target = target,
@@ -125,7 +111,7 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
-    // ── Run step ────────────────────────────────────────────────────
+    // Run the program
 
     const run_step = b.step("run", "Run the Tomasulo simulator");
     const run_cmd = b.addRunArtifact(exe);
@@ -135,7 +121,7 @@ pub fn build(b: *std.Build) void {
     }
     run_step.dependOn(&run_cmd.step);
 
-    // ── Tests (Zig test harness calling C code) ─────────────────────
+    // Call the test harness
 
     const test_mod = b.createModule(.{
         .root_source_file = b.path("src/tests.zig"),
@@ -160,19 +146,13 @@ pub fn build(b: *std.Build) void {
     });
 
     const run_tests = b.addRunArtifact(tests);
-    // Force stdio inheritance so our custom runner's output reaches the user.
-    run_tests.stdio = .inherit;
+    run_tests.stdio = .inherit; // Ensure output reaches user.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
 
-    // ── Clean step ────────────────────────────────────────────────────
+    // Clean outputs
+
     const clean_step = b.step("clean", "Clean build artifacts");
-    const rm = b.addSystemCommand(&.{ "rm", "-f", "tomasulo" });
-    const rm_objs = b.addSystemCommand(&.{ "rm", "-f", "src/tomasulo.o", "src/parser.o", "src/display.o", "src/main.o", "src/parser.tab.o", "src/lex.parser.o" });
-    const rm_gen = b.addSystemCommand(&.{ "rm", "-f", "src/parser.tab.c", "src/lex.parser.c", "src/parser.tab.h" });
-    const rm_rf = b.addSystemCommand(&.{ "rm", "-rf", "zig-out", ".zig-cache" });
-    clean_step.dependOn(&rm.step);
-    clean_step.dependOn(&rm_objs.step);
-    clean_step.dependOn(&rm_gen.step);
+    const rm_rf = b.addSystemCommand(&.{ "rm", "-rf", "zig-out", ".zig-cache", "build" });
     clean_step.dependOn(&rm_rf.step);
 }
