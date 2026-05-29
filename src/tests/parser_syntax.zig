@@ -412,3 +412,45 @@ test "parser_syntax: missing '=' in config item rejected" {
         \\instructions { ADDD F0 F0 F0 }
     );
 }
+
+test "parser_syntax: zero cycles value rejected" {
+    try parseExpectFail(
+        \\cycles { add.d = 0 }
+        \\instructions { ADDD F0 F0 F0 }
+    );
+}
+
+test "parser_syntax: negative cycles value rejected" {
+    try parseExpectFail(
+        \\cycles { mult.d = -5 }
+        \\instructions { ADDD F0 F0 F0 }
+    );
+}
+
+test "parser_syntax: zero units value rejected" {
+    try parseExpectFail(
+        \\units { add.d = 0 }
+        \\instructions { ADDD F0 F0 F0 }
+    );
+}
+
+test "parser_syntax: negative units value rejected" {
+    try parseExpectFail(
+        \\units { l.d = -2 }
+        \\instructions { ADDD F0 F0 F0 }
+    );
+}
+
+test "parser_syntax: positive cycles and units accepted" {
+    const src =
+        \\cycles { add.d = 1, mult.d = 10 }
+        \\units { add.d = 1, mult.d = 2 }
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 1), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 10), p.cfg.latency[c.OP_MULTD]);
+    try testing.expectEqual(@as(c_int, 1), p.cfg.num_rs[c.RS_ADD]);
+    try testing.expectEqual(@as(c_int, 2), p.cfg.num_rs[c.RS_MULT]);
+}

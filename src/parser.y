@@ -145,6 +145,11 @@ cycles_items
 cycles_item
     : OPCODE EQUALS INT
         {
+            if ($3 <= 0) {
+                tom_parse_error(ctx, @3,
+                    "cycles value must be positive (got %d)", $3);
+                YYERROR;
+            }
             ctx->cfg->latency[$1] = $3;
         }
     ;
@@ -163,6 +168,11 @@ units_items
 units_item
     : OPCODE EQUALS INT
         {
+            if ($3 <= 0) {
+                tom_parse_error(ctx, @3,
+                    "units value must be positive (got %d)", $3);
+                YYERROR;
+            }
             RSType t = op_to_rs_type($1);
             ctx->cfg->num_rs[t] = $3;
         }
