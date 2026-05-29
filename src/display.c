@@ -321,14 +321,14 @@ void display_final(FILE *out, const Simulator *sim)
 	const char *reset = C(out, ANSI_RESET);
 
 	fprintf(out, "\n");
-	display_separator(out, 78, "SIMULATION COMPLETE");
+	display_separator(out, 61, "SIMULATION COMPLETE");
 	fprintf(out, " %sTotal cycles:%s %s%s%d%s\n", bold, reset, bold, green, sim->cycle, reset);
 	fprintf(out, " %sInstructions:%s %s%s%d%s\n\n", bold, reset, bold, yellow,
 		sim->num_instructions, reset);
 
 	display_instructions(out, sim);
 
-	display_separator(out, 78, "Final Register Values");
+	display_separator(out, 61, "Final Register Values");
 	bool any = false;
 	for (int i = 0; i < MAX_FP_REGISTERS; i++) {
 		if (sim->fp_regs[i] != 0.0) {
