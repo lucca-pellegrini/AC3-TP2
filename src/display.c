@@ -66,7 +66,7 @@ void display_separator(FILE *out, int width, const char *title)
 		fprintf(out, "\n%s", dim);
 		for (int i = 0; i < pad; i++)
 			fprintf(out, "\u2500");
-		fprintf(out, "%s\u2524 %s%s%s%s %s\u251C%s", reset, bold, cyan, title, reset, dim,
+		fprintf(out, "\u2524%s %s%s%s%s %s\u251C%s", reset, bold, cyan, title, reset, dim,
 			reset);
 		fprintf(out, "%s", dim);
 		for (int i = 0; i < width - pad - tlen - 4; i++)
