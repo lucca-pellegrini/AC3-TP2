@@ -152,14 +152,36 @@ pgo: clean
 
 # ====================== Utility Targets ======================
 
+run-stripped: $(BIN)-stripped
+	$< tests/input_basic.tom -b
+
+test-stripped: $(BIN)-stripped
+	@echo "=== Running all tests ==="
+	@for f in tests/input_*.tom; do \
+		echo "=== $$f ==="; \
+		$< $$f -q || exit 1; \
+	done
+	@echo "All tests passed."
+
+run-release: $(BIN)-release
+	$< tests/input_basic.tom -b
+
+test-release: $(BIN)-release
+	@echo "=== Running all tests ==="
+	@for f in tests/input_*.tom; do \
+		echo "=== $$f ==="; \
+		$< $$f -q || exit 1; \
+	done
+	@echo "All tests passed."
+
 run: $(BIN)
-	./$(BIN) tests/input_basic.tom -b
+	$< tests/input_basic.tom -b
 
 test: $(BIN)
 	@echo "=== Running all tests ==="
 	@for f in tests/input_*.tom; do \
 		echo "=== $$f ==="; \
-		./$(BIN) $$f -q || exit 1; \
+		$< $$f -q || exit 1; \
 	done
 	@echo "All tests passed."
 
@@ -175,4 +197,5 @@ clean:
 %/:
 	$(MKDIR) $@
 
-.PHONY: all run test release clean pgo
+.PHONY: all clean pgo release \
+	run test run-stripped test-stripped run-release test-release
