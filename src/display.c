@@ -246,6 +246,19 @@ void display_rs(FILE *out, const Simulator *sim)
 
 // ── Reorder Buffer ──────────────────────────────────────────────────────────
 
+// Check if an ROB entry is waiting for CDB (in Write state but not yet written)
+// For SD instructions, they don't use CDB so we exclude them
+static bool is_waiting_for_cdb(const Simulator *sim, int rob_tag)
+{
+	const ROBEntry *e = &sim->rob[rob_tag - 1];
+	if (!e->busy || e->state != ROB_WRITE_RESULT || e->written)
+		return false;
+	// SD doesn't use CDB
+	if (e->op == OP_SD)
+		return false;
+	return true;
+}
+
 // Pick a color for the ROB state.
 static const char *rob_state_color(FILE *out, ROBState state)
 {
@@ -269,11 +282,13 @@ void display_rob(FILE *out, const Simulator *sim)
 {
 	const char *bold = C(out, ANSI_BOLD);
 	const char *reset = C(out, ANSI_RESET);
+	const char *dim = C(out, ANSI_DIM);
 	const char *tag_color = C(out, ANSI_BR_BLUE);
 	const char *op_color = C(out, ANSI_BR_MAGENTA);
 	const char *reg_color = C(out, ANSI_BR_BLUE);
 	const char *val_color = C(out, ANSI_CYAN);
 	const char *busy_yes = C(out, ANSI_BR_GREEN);
+	const char *cdb_wait_color = C(out, ANSI_BR_RED);
 
 	display_separator(out, 50, "Reorder Buffer");
 
@@ -281,6 +296,15 @@ void display_rob(FILE *out, const Simulator *sim)
 	fprintf(out, " %-4s  %-3s  %-10s  %-6s  %-6s  %10s", "Tag", "Occ", "State", "Op", "Dest",
 		"Value");
 	fprintf(out, "%s\n", reset);
+
+	// First pass: count how many are waiting for CDB
+	int cdb_waiters = 0;
+	int cdb_waiter_tags[MAX_RS];
+	for (int i = 0; i < ROB_SIZE; i++) {
+		if (is_waiting_for_cdb(sim, i + 1)) {
+			cdb_waiter_tags[cdb_waiters++] = i + 1;
+		}
+	}
 
 	for (int i = 0; i < ROB_SIZE; i++) {
 		const ROBEntry *e = &sim->rob[i];
@@ -293,10 +317,37 @@ void display_rob(FILE *out, const Simulator *sim)
 
 		const char *state_col = rob_state_color(out, e->state);
 
-		fprintf(out, " %s#%-3d%s  %s%-3s%s  %s%-10s%s  %s%-6s%s  %s%-6s%s  %s%10.2f%s\n",
-			tag_color, i + 1, reset, busy_yes, "Yes", reset, state_col,
-			rob_state_name(e->state), reset, op_color, opcode_name(e->op), reset,
-			reg_color, dest_buf, reset, val_color, e->value, reset);
+		// Check if this entry is waiting for CDB (contention)
+		bool waiting_cdb = is_waiting_for_cdb(sim, i + 1);
+
+		// Show state with CDB wait indicator
+		char state_buf[24];
+		if (waiting_cdb && cdb_waiters > 1) {
+			// Multiple waiting = contention, show "Write[CDB]" in red
+			snprintf(state_buf, sizeof(state_buf), "Write");
+			fprintf(out,
+				" %s#%-3d%s  %s%-3s%s  %s%s%-5s%s%s[CDB]%s  %s%-6s%s  "
+				"%s%-6s%s  %s%10.2f%s\n",
+				tag_color, i + 1, reset, busy_yes, "Yes", reset, bold,
+				cdb_wait_color, state_buf, reset, cdb_wait_color, reset, op_color,
+				opcode_name(e->op), reset, reg_color, dest_buf, reset, val_color,
+				e->value, reset);
+		} else {
+			fprintf(out,
+				" %s#%-3d%s  %s%-3s%s  %s%-10s%s  %s%-6s%s  %s%-6s%s  %s%10.2f%s\n",
+				tag_color, i + 1, reset, busy_yes, "Yes", reset, state_col,
+				rob_state_name(e->state), reset, op_color, opcode_name(e->op),
+				reset, reg_color, dest_buf, reset, val_color, e->value, reset);
+		}
+	}
+
+	// Show CDB contention summary if there are multiple waiters
+	if (cdb_waiters > 1) {
+		fprintf(out, " %s%sCDB contention:%s", bold, cdb_wait_color, reset);
+		for (int i = 0; i < cdb_waiters; i++) {
+			fprintf(out, " %s#%d%s", cdb_wait_color, cdb_waiter_tags[i], reset);
+		}
+		fprintf(out, " %s(%d waiting)%s\n", dim, cdb_waiters, reset);
 	}
 }
 
