@@ -1,0 +1,67 @@
+cff-version: 1.2.0
+title: >-
+  Code Repository for the Tomasulo simulator
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Amanda
+    family-names: Canizela Guimarães
+    email: amanda.canizela@gmail.com
+    affiliation: >-
+      Instituto de Ciências Exatas e Informática, Pontifícia
+      Universidade Católica de Minas Gerais
+  - given-names: Ariel Inácio
+    family-names: Jordão
+    email: arielijordao@gmail.com
+    affiliation: >-
+      Instituto de Ciências Exatas e Informática, Pontifícia
+      Universidade Católica de Minas Gerais
+  - given-names: Lucca
+    family-names: Pellegrini
+    email: lucca@verticordia.com
+    affiliation: >-
+      Instituto de Ciências Exatas e Informática, Pontifícia
+      Universidade Católica de Minas Gerais
+  - given-names: Paulo
+    family-names: Dimas
+    email: paulo.junior.1478361@sga.pucminas.br
+    affiliation: >-
+      Instituto de Ciências Exatas e Informática, Pontifícia
+      Universidade Católica de Minas Gerais
+  - given-names: Pedro Vitor
+    family-names: Andrade
+    email: pedrovitor0826@gmail.com
+    affiliation: >-
+      Instituto de Ciências Exatas e Informática, Pontifícia
+      Universidade Católica de Minas Gerais
+repository-code: 'https://github.com/lucca-pellegrini/AC3-TP2'
+abstract: >-
+  A small, self-contained Tomasulo algorithm simulator for
+  experimentation. The simulator models classic out-of-order
+  execution with register renaming via reservation stations,
+  load/store buffers, and a common data bus (CDB). Behavior
+  is driven by a human-readable configuration format that
+  specifies functional units, operation latencies,
+  reservation-station sizes, and memory ports. A custom
+  parser consumes the configuration and trace files and
+  builds the internal machine model, with many runnable
+  examples. The tool executes instruction traces and reports
+  cycle-by-cycle state and summary statistics (total cycles,
+  IPC, hazard-related stalls, and CDB contention). Included
+  scenarios exercise structural hazards, RAW/WAR/WAW cases,
+  load-use delays, dependency chains, parallel issue, and
+  mixed workloads. The codebase is written in C with a
+  dedicated parser (lex/yacc) and Zig-based build system and
+  unit tests for reproducibility.
+keywords:
+  - Computer architecture
+  - Modeling of computer architecture
+  - Simulation
+  - Performance analysis and design aids
+  - Out-of-order execution
+  - Dynamic instruction scheduling
+license: ISC
+version: 0.1.0
+date-released: '2026-05-31'
