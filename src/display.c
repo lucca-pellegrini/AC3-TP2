@@ -136,7 +136,7 @@ void display_instructions(FILE *out, const Simulator *sim)
 
 		// Determine instruction state for styling
 		bool is_finished = (inst->write_cycle > 0);
-		bool just_issued = (inst->issue_cycle == sim->cycle);
+		bool just_issued = (inst->issue_cycle > 0 && inst->issue_cycle == sim->cycle);
 		bool in_flight = (inst->issue_cycle > 0 && !is_finished && !just_issued);
 
 		// Style the instruction info columns based on state:
@@ -364,6 +364,8 @@ void display_final(FILE *out, const Simulator *sim)
 	const char *bold = C(out, ANSI_BOLD);
 	const char *green = C(out, ANSI_BR_GREEN);
 	const char *yellow = C(out, ANSI_BR_YELLOW);
+	const char *cyan = C(out, ANSI_BR_CYAN);
+	const char *magenta = C(out, ANSI_BR_MAGENTA);
 	const char *reg_color = C(out, ANSI_BR_BLUE);
 	const char *val_color = C(out, ANSI_CYAN);
 	const char *dim = C(out, ANSI_DIM);
@@ -372,8 +374,63 @@ void display_final(FILE *out, const Simulator *sim)
 	fprintf(out, "\n");
 	display_separator(out, 61, "SIMULATION COMPLETE");
 	fprintf(out, " %sTotal cycles:%s %s%s%d%s\n", bold, reset, bold, green, sim->cycle, reset);
-	fprintf(out, " %sInstructions:%s %s%s%d%s\n\n", bold, reset, bold, yellow,
+	fprintf(out, " %sInstructions:%s %s%s%d%s\n", bold, reset, bold, yellow,
 		sim->num_instructions, reset);
+
+	// Calculate performance metrics
+	double cpi = (sim->num_instructions > 0) ? (double)sim->cycle / sim->num_instructions : 0.0;
+	double ipc = (sim->cycle > 0) ? (double)sim->num_instructions / sim->cycle : 0.0;
+
+	// Calculate stall statistics from instruction timing
+	int total_issue_stalls = 0; // Stalls waiting to issue (structural hazards)
+	int total_exec_stalls = 0; // Stalls waiting for operands (data hazards)
+	int total_write_stalls = 0; // Stalls waiting to write result (CDB contention)
+
+	for (int i = 0; i < sim->num_instructions; i++) {
+		const Instruction *inst = &sim->instructions[i];
+		if (inst->issue_cycle <= 0)
+			continue;
+
+		// Issue stalls: cycles between previous issue and this issue - 1
+		// (ideal is 1 cycle between issues)
+		if (i > 0 && sim->instructions[i - 1].issue_cycle > 0) {
+			int issue_gap = inst->issue_cycle - sim->instructions[i - 1].issue_cycle;
+			if (issue_gap > 1)
+				total_issue_stalls += (issue_gap - 1);
+		}
+
+		// Execution stalls: cycles between issue and exec start - 1
+		// (waiting for operands due to RAW hazards)
+		if (inst->exec_start > 0) {
+			int exec_wait = inst->exec_start - inst->issue_cycle;
+			if (exec_wait > 1)
+				total_exec_stalls += (exec_wait - 1);
+		}
+
+		// Write stalls: cycles between exec end and write - 1
+		// (CDB contention)
+		if (inst->exec_end > 0 && inst->write_cycle > 0) {
+			int write_wait = inst->write_cycle - inst->exec_end;
+			if (write_wait > 1)
+				total_write_stalls += (write_wait - 1);
+		}
+	}
+
+	int total_stalls = total_issue_stalls + total_exec_stalls + total_write_stalls;
+
+	fprintf(out, " %sCPI (Cycles/Instruction):%s %s%s%.3f%s\n", bold, reset, bold, cyan, cpi,
+		reset);
+	fprintf(out, " %sIPC (Instructions/Cycle):%s %s%s%.3f%s\n", bold, reset, bold, cyan, ipc,
+		reset);
+	fprintf(out, "\n");
+	fprintf(out, " %sTotal stalls:%s %s%s%d%s\n", bold, reset, bold, magenta, total_stalls,
+		reset);
+	fprintf(out, "   %s├─ Issue stalls (structural):%s %s%d%s\n", dim, reset, magenta,
+		total_issue_stalls, reset);
+	fprintf(out, "   %s├─ Exec stalls (RAW hazards):%s %s%d%s\n", dim, reset, magenta,
+		total_exec_stalls, reset);
+	fprintf(out, "   %s└─ Write stalls (CDB contention):%s %s%d%s\n", dim, reset, magenta,
+		total_write_stalls, reset);
 
 	display_instructions(out, sim);
 

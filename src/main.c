@@ -71,7 +71,6 @@ int main(int argc, char *argv[])
 	if (!input_path || strcmp(input_path, "-") == 0)
 		input_path = "/dev/stdin";
 
-
 	// Open output
 	FILE *out = stdout;
 	if (output_path) {
@@ -113,6 +112,19 @@ int main(int argc, char *argv[])
 	const int MAX_CYCLES = 500;
 
 	setvbuf(out, NULL, _IOFBF, 1 << 16); // fully buffered
+	if (mode == DISPLAY_INTERACTIVE && out == stdout) {
+		fprintf(out, "\033[2J\033[H");
+		display_cycle(out, &sim);
+		fflush(stdout);
+		fprintf(stderr, "[cycle %d] Press Enter to continue (q to run all)...", sim.cycle);
+		int ch = getchar();
+		if (ch == 'q' || ch == 'Q') {
+			mode = DISPLAY_BATCH;
+			// consume rest of line
+			while (ch != '\n' && ch != EOF)
+				ch = getchar();
+		}
+	}
 	while (!sim_done(&sim) && sim.cycle < MAX_CYCLES) {
 		sim_step(&sim);
 
@@ -143,8 +155,9 @@ int main(int argc, char *argv[])
 			"\nSimulation exceeded %d cycles (possible deadlock). "
 			"Aborting.\n",
 			MAX_CYCLES);
+	} else if (mode == DISPLAY_INTERACTIVE && out == stdout) {
+		fprintf(out, "\033[2J\033[H");
 	}
-
 	display_final(out, &sim);
 
 	if (out != stdout)
