@@ -45,7 +45,7 @@ fn runBison(b: *std.Build) BisonOutputs {
     const run = b.addSystemCommand(&.{tool});
     run.addArg("-d");
     run.addArg("-o");
-    const tab_c = run.addOutputFileArg("parser.tab.c");
+    const tab_c = run.addOutputFileArg("build/gen/parser.tab.c");
     run.addFileArg(b.path("src/parser.y"));
     // Bison writes parser.tab.h alongside parser.tab.c, so derive the
     // header path from the same generated directory.
@@ -61,7 +61,7 @@ fn runFlex(b: *std.Build, bison_h: std.Build.LazyPath) std.Build.LazyPath {
     };
     const run = b.addSystemCommand(&.{tool});
     run.addArg("-o");
-    const out = run.addOutputFileArg("lex.parser.c");
+    const out = run.addOutputFileArg("build/gen/lex.parser.c");
     run.addFileArg(b.path("src/parser.l"));
     // Make sure parser.tab.h exists before flex runs, since parser.l
     // %includes it.
@@ -115,7 +115,7 @@ pub fn build(b: *std.Build) void {
         .flags = c_flags,
     });
 
-    exe_mod.addIncludePath(b.path("src"));
+    exe_mod.addIncludePath(b.path("include"));
     addGeneratedParser(b, exe_mod);
 
     const exe = b.addExecutable(.{
@@ -144,7 +144,7 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
 
-    test_mod.addIncludePath(b.path("src"));
+    test_mod.addIncludePath(b.path("include"));
     test_mod.addCSourceFiles(.{
         .files = c_lib_sources,
         .flags = c_flags,

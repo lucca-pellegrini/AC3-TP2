@@ -1,102 +1,152 @@
-# Standalone Makefile -- build without Zig
+# Tomasulo Simulator - Modern Standalone Makefile
 # Usage: make          (build)
-#        make run      (build and run with default input)
-#        make test     (run basic tests)
-#        make clean    (remove artifacts)
+#        make run      (build + run default test)
+#        make test     (run all tests)
+#        make release  (stripped + UPX compressed)
+#        make clean
 
-CC      ?= cc
-LEX     ?= flex
-YACC    ?= bison
-CFLAGS  := -std=c23 -Wall -Wextra -Wpedantic -D_GNU_SOURCE -O3
-# Generated flex/bison sources tend to emit code that trips strict warnings
+NAME     := tomasulo
+
+# Directories
+SRC_DIR  := src
+INC_DIR  := include
+OUT_DIR  := build
+OBJ_DIR  := $(OUT_DIR)/obj
+GEN_DIR  := $(OUT_DIR)/gen
+
+# Tools
+CC       ?= cc
+LEX      ?= flex
+YACC     ?= bison
+
+# Compiler flags
+CFLAGS   += -std=c23 -Wall -Wextra -Wpedantic -O3 -D_GNU_SOURCE
 GEN_CFLAGS := $(CFLAGS) -Wno-unused-function -Wno-unused-but-set-variable
-LDFLAGS := -lm
-YFLAGS  := -d --warnings=no-yacc
 
-# Hand-written sources.
-SRC     := src/tomasulo.c src/parser.c src/display.c src/main.c
-OBJ     := $(SRC:.c=.o)
+LDFLAGS  += -lm
+YFLAGS   := -d --warnings=no-yacc
 
-# Generated sources (created by flex/bison from parser.l / parser.y).
-# GNU make has implicit rules for .l -> .yy.c via $(LEX) and .y -> .tab.c
-# via $(YACC), but they don't produce reentrant scanners and they put
-# files in awkward places.  Use explicit rules to keep things tidy.
-GEN_C   := src/parser.tab.c src/lex.parser.c
-GEN_O   := $(GEN_C:.c=.o)
-GEN_H   := src/parser.tab.h
+# FLTO support
+ifdef FLTO
+    CFLAGS  += -flto=auto
+    LDFLAGS += -flto=auto
+endif
 
-TARGET  := tomasulo
+# Debug mode
+ifdef DEBUG
+    CFLAGS += -g -DDEBUG
+endif
 
-# Kill GNU make's built-in .y -> .c and .l -> .c rules so they don't
-# clobber src/parser.c (the hand-written driver next to parser.y).
-%.c: %.y
-%.c: %.l
+# Hand-written sources
+SRCS     := $(wildcard $(SRC_DIR)/*.c)
+OBJS     := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
-.PHONY: all run test clean
+# Generated sources
+GEN_C    := $(GEN_DIR)/parser.tab.c $(GEN_DIR)/lex.parser.c
+GEN_H    := $(GEN_DIR)/parser.tab.h
+GEN_O    := $(GEN_C:.c=.o)
 
-all: $(TARGET)
+# Final binary
+BIN      := $(OUT_DIR)/$(NAME)
 
-# Flex generates a reentrant scanner because parser.l declares it via
-# %option reentrant.  We name the output explicitly so it slots cleanly
-# next to the bison output.
-src/lex.parser.c: src/parser.l src/parser.tab.h
+# Platform-specific
+ifneq ($(OS),Windows_NT)
+    MKDIR := mkdir -p
+    RMDIR := rm -rf
+else
+    MKDIR := mkdir
+    RMDIR := rmdir /s /q
+endif
+
+# ccache support
+ifeq ($(shell which ccache 2>/dev/null),)
+else
+    CC := ccache $(CC)
+endif
+
+# compiledb (clangd) support
+ifeq ($(shell which compiledb 2>/dev/null),)
+    CC_JSON :=
+else
+    CC_JSON := $(OUT_DIR)/compile_commands.json
+endif
+
+.PHONY: all run test release clean pgo
+
+all: $(BIN)
+
+# ====================== Generated Parser/Lexer ======================
+
+$(GEN_DIR)/parser.tab.c $(GEN_DIR)/parser.tab.h: $(SRC_DIR)/parser.y | $(GEN_DIR)
+	$(YACC) $(YFLAGS) -o $(GEN_DIR)/parser.tab.c $<
+
+$(GEN_DIR)/lex.parser.c: $(SRC_DIR)/parser.l $(GEN_DIR)/parser.tab.h | $(GEN_DIR)
 	$(LEX) -o $@ $<
 
-# Bison produces both the .tab.c parser and the .tab.h with token codes.
-src/parser.tab.c src/parser.tab.h: src/parser.y
-	$(YACC) $(YFLAGS) -d -o src/parser.tab.c $<
+# ====================== Compilation Rules ======================
 
-# Hand-written .c -> .o with strict warnings.
-src/%.o: src/%.c $(GEN_H)
-	$(CC) $(CFLAGS) -Isrc -c -o $@ $<
+# Hand-written sources
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(GEN_H) | $(OBJ_DIR)
+	$(CC) -I$(INC_DIR) -I$(GEN_DIR) $(CFLAGS) -c $< -o $@
 
-# Generated .c -> .o with relaxed warnings.
-src/parser.tab.o src/lex.parser.o: src/%.o: src/%.c $(GEN_H)
-	$(CC) $(GEN_CFLAGS) -Isrc -c -o $@ $<
+# Generated sources (relaxed warnings)
+$(GEN_O): $(GEN_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_H) | $(GEN_DIR)
+	$(CC) -I$(INC_DIR) -I$(GEN_DIR) $(GEN_CFLAGS) -c $< -o $@
 
-$(TARGET): $(OBJ) $(GEN_O)
-	$(CC) -o $@ $^ $(LDFLAGS)
+# Create directories
+$(OBJ_DIR) $(GEN_DIR):
+	$(MKDIR) $@
 
-run: $(TARGET)
-	./$(TARGET) tests/input_basic.tom -b
+# Linking
+$(BIN): $(OBJS) $(GEN_O) | $(OUT_DIR)
+	$(CC) $(LDFLAGS) $^ -o $@
 
-test: $(TARGET)
-	@echo "=== Basic test ==="
-	./$(TARGET) tests/input_basic.tom -q
-	@echo ""
-	@echo "=== CDB contention test ==="
-	./$(TARGET) tests/input_cdb_contention.tom -q
-	@echo ""
-	@echo "=== Chain test ==="
-	./$(TARGET) tests/input_chain.tom -q
-	@echo ""
-	@echo "=== Daxpy test ==="
-	./$(TARGET) tests/input_daxpy.tom -q
-	@echo ""
-	@echo "=== Hennessy test ==="
-	./$(TARGET) tests/input_hennessy.tom -q
-	@echo ""
-	@echo "=== Horner test ==="
-	./$(TARGET) tests/input_horner.tom -q
-	@echo ""
-	@echo "=== Load use test ==="
-	./$(TARGET) tests/input_load_use.tom -q
-	@echo ""
-	@echo "=== Mixed stress test ==="
-	./$(TARGET) tests/input_mixed_stress.tom -q
-	@echo ""
-	@echo "=== Parallel test ==="
-	./$(TARGET) tests/input_parallel.tom -q
-	@echo ""
-	@echo "=== Structural hazard test ==="
-	./$(TARGET) tests/input_structural.tom -q
-	@echo ""
-	@echo "=== WAW test ==="
-	./$(TARGET) tests/input_waw.tom -q
-	@echo ""
-	@echo "All tests completed."
+# ====================== Release & PGO ======================
+
+release: $(BIN)-release
+
+$(BIN)-stripped: $(BIN)
+	strip -o $@ $<
+
+$(BIN)-release: $(BIN)-stripped
+	upx -qqo $@ $<
+
+# Profile-Guided Optimization (runs all tests)
+pgo: clean
+	@echo "=== Generating PGO profile ==="
+	$(MAKE) all CFLAGS="$(CFLAGS) -fprofile-generate" LDFLAGS="$(LDFLAGS) -fprofile-generate"
+	@echo "=== Running tests for profile data ==="
+	@for test in tests/input_*.tom; do \
+		echo "  Running $$test"; \
+		$(BIN) $$test -q; \
+	done
+	@echo "=== Rebuilding with profile data ==="
+	$(MAKE) all CFLAGS="$(CFLAGS) -fprofile-use" LDFLAGS="$(LDFLAGS) -fprofile-use"
+	@echo "PGO completed."
+
+# ====================== Utility Targets ======================
+
+run: $(BIN)
+	./$(BIN) tests/input_basic.tom -b
+
+test: $(BIN)
+	@echo "=== Running all tests ==="
+	@for f in tests/input_*.tom; do \
+		echo "=== $$f ==="; \
+		./$(BIN) $$f -q || exit 1; \
+	done
+	@echo "All tests passed."
+
+$(CC_JSON): Makefile | $(OUT_DIR)
+	compiledb -nfo $@ make CC=clang --no-color
 
 clean:
-	$(RM) $(TARGET)
-	$(RM) $(OBJ) $(GEN_O) $(GEN_C) $(GEN_H)
-	$(RM) -r zig-out .zig-cache
+	$(RM) $(BIN) $(BIN)-stripped $(BIN)-release
+	$(RMDIR) $(OUT_DIR)
+	$(RM) *.gcda *.profraw *.profdata
+
+# Directory creation
+%/:
+	$(MKDIR) $@
+
+.PHONY: all run test release clean pgo

@@ -1,54 +1,7 @@
 # Build artifacts
-*.o
-*.out
-*.exe
-/tomasulo
+build/
+.cache/
 
 # Zig
 zig-out/
 .zig-cache/
-
-# Build directories
-build/
-bin/
-obj/
-dist/
-.cache/
-
-# Output files
-output.txt
-output*.txt
-resultado*.txt
-
-# IDEs and Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# Temporary
-*.tmp
-*.log
-*.bak
-
-# Dependencies
-*.d
-
-# Core dumps
-core
-core.*
-
-# Valgrind
-vgcore.*
-*.memcheck
-
-# Editor backups
-\#*\#
-.\#*
-
-# Lex/Flex/Yacc/Bison stuff
-*.tab.[ch]
-*.parser.[ch]
