@@ -135,7 +135,7 @@ $(BIN)-stripped: $(BIN)
 	strip -o $@ $<
 
 $(BIN)-release: $(BIN)-stripped
-	upx -qqo $@ $<
+	upx -qqo $@ -9 $<
 
 # Profile-Guided Optimization (runs all tests)
 pgo: clean
