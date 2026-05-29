@@ -5,29 +5,27 @@
 
 # Common Data Bus contention.
 #
-# We deliberately set up four fully independent ADDs that all start
-# executing on the same cycle. With ADDD latency = 2 they all finish
-# their execute stage on the same cycle and would all like to broadcast
-# their result on the CDB at the same time -- but only one instruction
-# can write per cycle.
+# We set up four ADDs that all depend on the result of the first ADD (F10).
+# This forces them to wait until F10 is ready, then they all start executing
+# on the same cycle. With ADDD latency = 2 they all finish their execute
+# stage on the same cycle and would all like to broadcast their result on
+# the CDB at the same time -- but only one instruction can write per cycle.
 #
-# Result: the first instruction in program order wins the bus, and
-# the others write on the subsequent cycles. Their write_cycle values
-# must all differ by at least 1.
+# Result: the instructions queue at the CDB and write one per cycle.
 #
 # Expected values (correctness):
 #   F10 = 1 + 2 = 3
-#   F11 = 3 + 4 = 7
-#   F12 = 5 + 6 = 11
-#   F13 = 7 + 8 = 15
+#   F11 = 3 + 3 = 6
+#   F12 = 3 + 4 = 7
+#   F13 = 3 + 5 = 8
 
 cycles {
     add.d = 2
 }
 
 units {
-    # 4 Add stations: all four ADDs can issue in 4 cycles
-    # and execute in parallel, then queue at the CDB.
+    # 4 Add stations: all four dependent ADDs can issue quickly
+    # and then wait for F10, start together, finish together, queue at CDB.
     add.d = 4
 }
 
@@ -37,14 +35,11 @@ registers {
     F2 = 3.0
     F3 = 4.0
     F4 = 5.0
-    F5 = 6.0
-    F6 = 7.0
-    F7 = 8.0
 }
 
 instructions {
-    ADDD F10 F0 F1
-    ADDD F11 F2 F3
-    ADDD F12 F4 F5
-    ADDD F13 F6 F7
+    ADDD F10 F0 F1   # F10 = 1 + 2 = 3 (independent, finishes first)
+    ADDD F11 F10 F2  # F11 = F10 + 3, waits for F10
+    ADDD F12 F10 F3  # F12 = F10 + 4, waits for F10
+    ADDD F13 F10 F4  # F13 = F10 + 5, waits for F10
 }
