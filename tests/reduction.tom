@@ -24,7 +24,7 @@
 # then level 2. Total depth = 3 additions (log2(8) = 3).
 
 cycles {
-    add.d = 2
+    add.d = 4
 }
 
 units {
