@@ -434,14 +434,43 @@ void display_final(FILE *out, const Simulator *sim)
 
 	fprintf(out, "\n");
 
-	// Show filename in the completion header
+	// Custom styled separator for SIMULATION COMPLETE
+	const char *white_bold = C(out, ANSI_BOLD);
+	const char *magenta_bold = use_color(out) ? ANSI_BOLD ANSI_BR_MAGENTA : "";
+	const char *cyan_color = C(out, ANSI_CYAN);
+
+	const char *base_text = "SIMULATION COMPLETE";
+	int base_len = (int)strlen(base_text);
+	int total_text_len = base_len;
+
+	// Calculate total text length including filename if present
 	if (sim->input_filename) {
-		char header[128];
-		snprintf(header, sizeof(header), "SIMULATION COMPLETE - %s", sim->input_filename);
-		display_separator(out, 61, header);
-	} else {
-		display_separator(out, 61, "SIMULATION COMPLETE");
+		total_text_len += 3 + (int)strlen(sim->input_filename); // " - filename"
 	}
+
+	int width = 61;
+	int pad = (width - total_text_len - 4) / 2;
+	if (pad < 0)
+		pad = 0;
+
+	// Draw the fancy separator with ═ and ╣ ╠
+	fprintf(out, "\n%s", white_bold);
+	for (int i = 0; i < pad; i++)
+		fprintf(out, "\u2550"); // ═ (double horizontal line)
+
+	fprintf(out, "\u2563%s", reset); // ╣ (right border)
+	fprintf(out, " %s%s%s", magenta_bold, base_text, reset);
+
+	// Add filename if present
+	if (sim->input_filename) {
+		fprintf(out, " - %s%s%s", cyan_color, sim->input_filename, reset);
+	}
+
+	fprintf(out, " %s\u2560", white_bold); // ╠ (left border)
+
+	for (int i = 0; i < width - pad - total_text_len - 4; i++)
+		fprintf(out, "\u2550"); // ═ (double horizontal line)
+	fprintf(out, "%s\n", reset);
 
 	// ── Instruction Status Table ──
 	display_instructions(out, sim);
