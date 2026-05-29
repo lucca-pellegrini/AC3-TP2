@@ -488,6 +488,74 @@ static void stage_commit(Simulator *sim)
 	sim->committed++;
 }
 
+// ── Statistics Collection ───────────────────────────────────────────────────
+
+static void collect_stats(Simulator *sim)
+{
+	SimulatorStats *s = &sim->stats;
+
+	// Count busy RS and executing FUs per type
+	int rs_busy[RS_TYPE_COUNT] = { 0 };
+	int fu_busy[RS_TYPE_COUNT] = { 0 };
+
+	for (int i = 0; i < sim->num_rs; i++) {
+		ReservationStation *rs = &sim->rs[i];
+		if (rs->busy) {
+			rs_busy[rs->type]++;
+			if (rs->executing)
+				fu_busy[rs->type]++;
+		}
+	}
+
+	// Update RS statistics
+	for (int t = 0; t < RS_TYPE_COUNT; t++) {
+		s->rs_total_occupancy[t] += rs_busy[t];
+		if (rs_busy[t] > s->rs_peak_occupancy[t])
+			s->rs_peak_occupancy[t] = rs_busy[t];
+		if (rs_busy[t] == sim->cfg.num_rs[t] && sim->cfg.num_rs[t] > 0)
+			s->rs_full_cycles[t]++;
+
+		// FU statistics
+		s->fu_total_occupancy[t] += fu_busy[t];
+		if (fu_busy[t] > 0)
+			s->fu_busy_cycles[t]++;
+		if (fu_busy[t] > s->fu_peak_occupancy[t])
+			s->fu_peak_occupancy[t] = fu_busy[t];
+	}
+
+	// Count CDB contention (how many RS want to write this cycle)
+	int cdb_requests = 0;
+	for (int i = 0; i < sim->num_rs; i++) {
+		ReservationStation *rs = &sim->rs[i];
+		if (!rs->busy)
+			continue;
+		ROBEntry *rob = rob_get(sim, rs->dest);
+		Instruction *inst = &sim->instructions[rs->instr_idx];
+		// RS wants CDB if: in WRITE_RESULT state, not SD, and not same cycle as exec_end
+		if (rob->state == ROB_WRITE_RESULT && rs->op != OP_SD &&
+		    inst->exec_end != sim->cycle)
+			cdb_requests++;
+	}
+	if (cdb_requests > 1)
+		s->cdb_contention_cycles++;
+	if (sim->cdb_valid) {
+		s->cdb_busy_cycles++;
+		s->cdb_total_requests++;
+	}
+
+	// ROB statistics
+	int rob_busy = 0;
+	for (int i = 0; i < ROB_SIZE; i++) {
+		if (sim->rob[i].busy)
+			rob_busy++;
+	}
+	s->rob_total_occupancy += rob_busy;
+	if (rob_busy > s->rob_peak_occupancy)
+		s->rob_peak_occupancy = rob_busy;
+	if (rob_busy == ROB_SIZE)
+		s->rob_full_cycles++;
+}
+
 // ── Public API ──────────────────────────────────────────────────────────────
 
 bool sim_step(Simulator *sim)
@@ -502,6 +570,9 @@ bool sim_step(Simulator *sim)
 	stage_write_result(sim);
 	stage_execute(sim);
 	stage_issue(sim);
+
+	// Collect statistics after all stages complete
+	collect_stats(sim);
 
 	return !sim_done(sim);
 }

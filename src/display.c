@@ -366,10 +366,14 @@ void display_final(FILE *out, const Simulator *sim)
 	const char *yellow = C(out, ANSI_BR_YELLOW);
 	const char *cyan = C(out, ANSI_BR_CYAN);
 	const char *magenta = C(out, ANSI_BR_MAGENTA);
+	const char *blue = C(out, ANSI_BR_BLUE);
 	const char *reg_color = C(out, ANSI_BR_BLUE);
 	const char *val_color = C(out, ANSI_CYAN);
 	const char *dim = C(out, ANSI_DIM);
 	const char *reset = C(out, ANSI_RESET);
+
+	const SimulatorStats *s = &sim->stats;
+	int cycles = sim->cycle > 0 ? sim->cycle : 1; // avoid div by zero
 
 	fprintf(out, "\n");
 	display_separator(out, 61, "SIMULATION COMPLETE");
@@ -418,6 +422,8 @@ void display_final(FILE *out, const Simulator *sim)
 
 	int total_stalls = total_issue_stalls + total_exec_stalls + total_write_stalls;
 
+	// ── Performance Metrics ──
+	display_separator(out, 61, "Performance Metrics");
 	fprintf(out, " %sCPI (Cycles/Instruction):%s %s%s%.3f%s\n", bold, reset, bold, cyan, cpi,
 		reset);
 	fprintf(out, " %sIPC (Instructions/Cycle):%s %s%s%.3f%s\n", bold, reset, bold, cyan, ipc,
@@ -432,18 +438,101 @@ void display_final(FILE *out, const Simulator *sim)
 	fprintf(out, "   %s└─ Write stalls (CDB contention):%s %s%d%s\n", dim, reset, magenta,
 		total_write_stalls, reset);
 
+	// ── Functional Unit Utilization ──
+	display_separator(out, 61, "Functional Unit Utilization");
+	static const char *fu_names[] = { "Adder", "Multiplier", "Load Unit", "Store Unit" };
+	for (int t = 0; t < RS_TYPE_COUNT; t++) {
+		if (sim->cfg.num_rs[t] == 0)
+			continue;
+		double busy_pct = 100.0 * s->fu_busy_cycles[t] / cycles;
+		double avg_occ = (double)s->fu_total_occupancy[t] / cycles;
+		fprintf(out,
+			" %s%-12s%s %sbusy:%s %s%5.1f%%%s  %savg:%s %s%.2f%s  %speak:%s %s%d%s\n",
+			bold, fu_names[t], reset, dim, reset, cyan, busy_pct, reset, dim, reset,
+			cyan, avg_occ, reset, dim, reset, cyan, s->fu_peak_occupancy[t], reset);
+	}
+
+	// ── Reservation Station Utilization ──
+	display_separator(out, 61, "Reservation Station Utilization");
+	static const char *rs_names[] = { "Add RS", "Mult RS", "Load RS", "Store RS" };
+	for (int t = 0; t < RS_TYPE_COUNT; t++) {
+		if (sim->cfg.num_rs[t] == 0)
+			continue;
+		double avg_occ = (double)s->rs_total_occupancy[t] / cycles;
+		double full_pct = 100.0 * s->rs_full_cycles[t] / cycles;
+		fprintf(out,
+			" %s%-12s%s %savg:%s %s%.2f%s/%d  %speak:%s %s%d%s  %sfull:%s %s%5.1f%%%s\n",
+			bold, rs_names[t], reset, dim, reset, blue, avg_occ, reset,
+			sim->cfg.num_rs[t], dim, reset, blue, s->rs_peak_occupancy[t], reset, dim,
+			reset, blue, full_pct, reset);
+	}
+
+	// ── CDB Utilization ──
+	display_separator(out, 61, "CDB (Common Data Bus) Utilization");
+	double cdb_busy_pct = 100.0 * s->cdb_busy_cycles / cycles;
+	double avg_broadcasts = (double)s->cdb_total_requests / cycles;
+	fprintf(out, " %sBusy cycles:%s %s%d%s / %d %s(%.1f%%)%s\n", bold, reset, green,
+		s->cdb_busy_cycles, reset, cycles, dim, cdb_busy_pct, reset);
+	fprintf(out, " %sTotal broadcasts:%s %s%d%s\n", bold, reset, green, s->cdb_total_requests,
+		reset);
+	fprintf(out, " %sAvg broadcasts/cycle:%s %s%.3f%s\n", bold, reset, green, avg_broadcasts,
+		reset);
+	fprintf(out, " %sContention cycles:%s %s%d%s %s(multiple RS wanted CDB)%s\n", bold, reset,
+		yellow, s->cdb_contention_cycles, reset, dim, reset);
+
+	// ── ROB Utilization ──
+	display_separator(out, 61, "Reorder Buffer (ROB) Utilization");
+	double rob_avg = (double)s->rob_total_occupancy / cycles;
+	double rob_full_pct = 100.0 * s->rob_full_cycles / cycles;
+	fprintf(out, " %sAverage occupancy:%s %s%.2f%s / %d entries\n", bold, reset, cyan, rob_avg,
+		reset, ROB_SIZE);
+	fprintf(out, " %sPeak occupancy:%s %s%d%s\n", bold, reset, cyan, s->rob_peak_occupancy,
+		reset);
+	fprintf(out, " %sFull cycles:%s %s%d%s %s(%.1f%%)%s\n", bold, reset, cyan,
+		s->rob_full_cycles, reset, dim, rob_full_pct, reset);
+
+	// ── Instruction Status Table ──
 	display_instructions(out, sim);
 
+	// ── Final Register Values ──
 	display_separator(out, 61, "Final Register Values");
-	bool any = false;
+	bool any_reg = false;
+
+	// Collect non-zero registers first
+	int nz_regs[MAX_FP_REGISTERS];
+	int nz_count = 0;
 	for (int i = 0; i < MAX_FP_REGISTERS; i++) {
-		if (sim->fp_regs[i] != 0.0) {
-			fprintf(out, "  %sF%-2d%s = %s%.4f%s\n", reg_color, i, reset, val_color,
-				sim->fp_regs[i], reset);
-			any = true;
+		if (sim->fp_regs[i] != 0.0)
+			nz_regs[nz_count++] = i;
+	}
+
+	if (nz_count == 0) {
+		fprintf(out, "  %s(all zero)%s\n", dim, reset);
+	} else {
+		any_reg = true;
+		// Column layout: "F## = " (6 chars) + value (14 chars) = 20 chars per entry
+		// With 64 char max width and 2 char indent, fit 3 columns
+		const int num_cols = 3;
+		int col = 0;
+
+		for (int j = 0; j < nz_count; j++) {
+			int i = nz_regs[j];
+			// Build the value string first to measure/pad it
+			char val_str[32];
+			snprintf(val_str, sizeof(val_str), "%.4f", sim->fp_regs[i]);
+
+			if (col == 0)
+				fprintf(out, " ");
+			// Fixed width: F## (3) + " = " (3) + value (14) = 20 chars per column
+			fprintf(out, " %sF%-2d%s = %s%-14s%s", reg_color, i, reset, val_color,
+				val_str, reset);
+			col++;
+			if (col >= num_cols || j == nz_count - 1) {
+				fprintf(out, "\n");
+				col = 0;
+			}
 		}
 	}
-	if (!any)
-		fprintf(out, "  %s(all zero)%s\n", dim, reset);
+	(void)any_reg; // suppress unused warning
 	fprintf(out, "\n");
 }

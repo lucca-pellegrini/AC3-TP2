@@ -111,6 +111,30 @@ typedef struct {
 	int num_rs[RS_TYPE_COUNT]; // number of reservation stations per type
 } TomasuloConfig;
 
+// ── Simulation Statistics ───────────────────────────────────────────────────
+
+typedef struct {
+	// Functional Unit Utilization (indexed by RSType: ADD, MULT, LOAD, STORE)
+	int fu_busy_cycles[RS_TYPE_COUNT]; // cycles each FU type was busy
+	int fu_peak_occupancy[RS_TYPE_COUNT]; // max concurrent busy units per type
+	int fu_total_occupancy[RS_TYPE_COUNT]; // sum of busy units each cycle (for avg)
+
+	// Reservation Station Utilization (indexed by RSType)
+	int rs_peak_occupancy[RS_TYPE_COUNT]; // max busy RS entries per type
+	int rs_total_occupancy[RS_TYPE_COUNT]; // sum of busy RS entries (for avg)
+	int rs_full_cycles[RS_TYPE_COUNT]; // cycles where RS type was completely full
+
+	// CDB Utilization
+	int cdb_busy_cycles; // cycles where CDB was used
+	int cdb_total_requests; // total CDB broadcast requests (successful)
+	int cdb_contention_cycles; // cycles where multiple RS wanted CDB
+
+	// ROB Utilization
+	int rob_peak_occupancy; // max busy ROB entries
+	int rob_total_occupancy; // sum of busy ROB entries (for avg)
+	int rob_full_cycles; // cycles where ROB was full
+} SimulatorStats;
+
 // Provide sensible defaults
 TomasuloConfig config_default(void);
 
@@ -140,6 +164,9 @@ typedef struct {
 	bool cdb_valid;
 	int cdb_tag;
 	double cdb_value;
+
+	// Statistics (collected during simulation)
+	SimulatorStats stats;
 } Simulator;
 
 // ── Simulator API ───────────────────────────────────────────────────────────
