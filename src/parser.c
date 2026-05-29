@@ -102,6 +102,12 @@ int parse_input(const char *path, TomasuloConfig *cfg, Simulator *sim)
 	if (!ctx.sim_ready)
 		sim_init(sim, cfg);
 
+	// Re-copy the final config into the simulator.  The grammar calls
+	// ensure_sim_ready() when it sees the first register or instruction
+	// block, but cycles{}/units{} blocks can appear later in the file.
+	// Without this, the simulator would run with stale default values.
+	sim->cfg = *cfg;
+
 	if (rc != 0 || ctx.errors > 0)
 		return -1;
 	return 0;
