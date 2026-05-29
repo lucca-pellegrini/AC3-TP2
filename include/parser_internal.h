@@ -6,7 +6,6 @@
 #include "tomasulo.h"
 
 #include <stdbool.h>
-#include <stdio.h>
 
 // State threaded through the parser via %parse-param.
 typedef struct ParseContext {

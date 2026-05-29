@@ -4,8 +4,6 @@
 
 #include "tomasulo.h"
 
-#include <stdio.h>
-
 // Parse a Tomasulo input file.  Populates `cfg` with configuration and
 // fills `sim` with instructions.  Initial register values are also loaded
 // if present in the file (REG_INIT section).
