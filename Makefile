@@ -173,22 +173,34 @@ run-release: $(BIN)-release
 test-stripped: $(BIN)-stripped
 	@echo "=== Running all tests ==="
 	@for f in tests/input_*.tom; do \
-		echo "=== $$f ==="; \
-		$< $$f -q || exit 1; \
+		cols=$$(tput cols 2>/dev/null || echo 120); \
+		[ $$cols -gt 120 ] && cols=120; \
+		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
+		printf '\033[1;35m=== %s ===\033[0m\n' "$$f"; \
+		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
+		$< "$$f" -q || exit 1; \
 	done
 	@echo "All tests passed."
 test-release: $(BIN)-release
 	@echo "=== Running all tests ==="
 	@for f in tests/input_*.tom; do \
-		echo "=== $$f ==="; \
-		$< $$f -q || exit 1; \
+		cols=$$(tput cols 2>/dev/null || echo 120); \
+		[ $$cols -gt 120 ] && cols=120; \
+		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
+		printf '\033[1;35m=== %s ===\033[0m\n' "$$f"; \
+		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
+		$< "$$f" -q || exit 1; \
 	done
 	@echo "All tests passed."
 test: $(BIN)
 	@echo "=== Running all tests ==="
 	@for f in tests/input_*.tom; do \
-		echo "=== $$f ==="; \
-		$< $$f -q || exit 1; \
+		cols=$$(tput cols 2>/dev/null || echo 120); \
+		[ $$cols -gt 120 ] && cols=120; \
+		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
+		printf '\033[1;35m=== %s ===\033[0m\n' "$$f"; \
+		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
+		$< "$$f" -q || exit 1; \
 	done
 	@echo "All tests passed."
 
