@@ -7,17 +7,17 @@
 
 NAME     ?= tomasulo
 
+# Tools
+CC       := musl-clang
+LEX      := flex
+YACC     := bison
+
 # Directories
 SRC_DIR  := src
 INC_DIR  := include
 OUT_DIR  := build
 OBJ_DIR  := $(OUT_DIR)/obj
 GEN_DIR  := $(OUT_DIR)/gen
-
-# Tools
-CC       ?= cc
-LEX      ?= flex
-YACC     ?= bison
 
 # Compiler flags
 CFLAGS   += -std=c23 -Wall -Wextra -Wpedantic -O3 -D_GNU_SOURCE
