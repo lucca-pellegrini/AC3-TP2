@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: MIT
-// Custom test runner that prints each test as it runs, with colors and
-// a final summary.  Use via `.test_runner` in build.zig.
+// SPDX-License-Identifier: ISC
+// SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+// NOTE: Test runner written by an LLM
+
 const std = @import("std");
 const builtin = @import("builtin");
 

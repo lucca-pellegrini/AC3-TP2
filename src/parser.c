@@ -1,10 +1,9 @@
-// SPDX-License-Identifier: MIT
-// Tomasulo Simulator -- Input file parser (driver)
-//
-// The actual grammar lives in parser.y (Bison) and the tokenizer in
-// parser.l (Flex).  This file provides the public entry point declared
-// in parser.h, plus the small helpers that those generated files call
-// back into.
+/*
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+ * NOTE: Tomasulo file parser logic written with help from LLMs
+ */
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif

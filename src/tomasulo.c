@@ -1,18 +1,12 @@
-// SPDX-License-Identifier: MIT
-// Tomasulo Algorithm Simulator -- Core implementation
-//
-// Pipeline stages per cycle (processed back-to-front):
-//   1. Commit    -- retire instructions from ROB head
-//   2. Write     -- CDB broadcast, free RS, mark ROB "written"
-//   3. Execute   -- decrement counters, compute results
-//   4. Issue     -- dispatch next instruction to RS + ROB
-//
-// Timing constraints:
-//   - Issue and Execute cannot happen on the same cycle for the same instr
-//   - Execute-complete and Write cannot happen on the same cycle
-//   - Write and Commit cannot happen on the same cycle
-//   - Single CDB: at most 1 write-result per cycle
-//
+/*
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+ * SPDX-FileCopyrightText: Copyright © 2026 Paulo Dimas Junior <paulo.junior.1478361@sga.pucminas.br>
+ * SPDX-FileCopyrightText: Copyright © 2026 Amanda Canizela Guimarães <amanda.canizela@gmail.com>
+ * SPDX-FileCopyrightText: Copyright © 2026 Ariel Inácio Jordão <arielijordao@gmail.com>
+ * SPDX-FileCopyrightText: Copyright © 2026 Pedro Vitor Andrade <pedrovitor0826@gmail.com>
+ */
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif

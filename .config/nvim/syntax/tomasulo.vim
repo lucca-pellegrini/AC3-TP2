@@ -1,3 +1,7 @@
+" SPDX-License-Identifier: ISC
+" SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+" NOTE: Vim-like syntax definition written with help from LLMs
+
 if exists("b:current_syntax")
   finish
 endif

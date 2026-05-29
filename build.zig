@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: ISC
+// SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+
 const std = @import("std");
 
 const c_sources = &.{

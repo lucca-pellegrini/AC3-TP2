@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+# SPDX-FileCopyrightText: Copyright © 2026 Paulo Dimas Junior <paulo.junior.1478361@sga.pucminas.br>
+# NOTE: This test file was written with help from LLMs
+
 # Load-use hazard: a consumer instruction is issued right after an L.D
 # that produces its operand. The ADD.D cannot start executing until
 # the load broadcasts on the CDB.

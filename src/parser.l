@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: MIT
+/* SPDX-License-Identifier: ISC
  * Tomasulo Simulator -- Flex scanner for input files.
+ * NOTE: Lexer generator written by an LLM
  *
  * Generates a reentrant scanner that feeds tokens to the Bison
  * grammar (parser.y).  The scanner tracks line numbers so the parser

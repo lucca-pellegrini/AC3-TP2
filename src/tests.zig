@@ -1,5 +1,7 @@
-// SPDX-License-Identifier: MIT
-// Zig test harness for the Tomasulo C simulator
+// SPDX-License-Identifier: ISC
+// SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+// NOTE: Test harness and some unit tests written with help from LLMs
+
 const std = @import("std");
 const testing = std.testing;
 

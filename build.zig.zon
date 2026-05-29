@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: ISC
+// SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+// NOTE: Zig object initialized by `zig init`
+
 .{
     .name = .tomasulo,
     .version = "0.1.0",

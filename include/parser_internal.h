@@ -1,6 +1,9 @@
-// SPDX-License-Identifier: MIT
-// Internal glue shared between the flex scanner, the bison parser and
-// the parser driver (parser.c).  Not part of the public API.
+/*
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+ * NOTE: Tomasulo file parser logic written with help from LLMs
+ */
+
 #pragma once
 
 #include "tomasulo.h"

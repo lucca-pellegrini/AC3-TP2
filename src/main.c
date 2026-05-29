@@ -1,12 +1,12 @@
-// SPDX-License-Identifier: MIT
-// Tomasulo Algorithm Simulator -- Entry Point
-//
-// Usage:
-//   tomasulo <input.tom>                  (interactive mode)
-//   tomasulo <input.tom> -b               (batch mode, print all cycles)
-//   tomasulo <input.tom> -q               (quiet, only final state)
-//   tomasulo <input.tom> -o <output.txt>  (write output to file)
-//
+/*
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+ * SPDX-FileCopyrightText: Copyright © 2026 Paulo Dimas Junior <paulo.junior.1478361@sga.pucminas.br>
+ * SPDX-FileCopyrightText: Copyright © 2026 Amanda Canizela Guimarães <amanda.canizela@gmail.com>
+ * SPDX-FileCopyrightText: Copyright © 2026 Ariel Inácio Jordão <arielijordao@gmail.com>
+ * SPDX-FileCopyrightText: Copyright © 2026 Pedro Vitor Andrade <pedrovitor0826@gmail.com>
+ */
+
 #include "display.h"
 #include "parser.h"
 #include "tomasulo.h"

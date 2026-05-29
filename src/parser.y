@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: MIT
+/* SPDX-License-Identifier: ISC
  * Tomasulo Simulator -- Bison grammar for input files.
+ * NOTE: Parser generator written by an LLM
  *
  * Input file grammar (informal, C-like):
  *

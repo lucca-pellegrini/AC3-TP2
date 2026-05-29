@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: MIT
-// Tomasulo Simulator -- Display / Output
-//
-// Uses Unicode box-drawing characters for clean table rendering.
-// When the output stream is a terminal, ANSI escape codes are emitted to
-// add colors and bold for readability. Otherwise (file/pipe) plain text.
+/*
+ * SPDX-License-Identifier: ISC
+ * SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
+ * NOTE: Display logic written with help from LLMs
+ */
+
 #include "display.h"
 
 #include <string.h>
