@@ -112,6 +112,9 @@ $(GEN_DIR)/%.tab.c $(GEN_DIR)/%.tab.h: $(SRC_DIR)/%.y | $(GEN_DIR)
 $(GEN_DIR)/lex.%.c: $(SRC_DIR)/%.l $(GEN_DIR)/%.tab.h | $(GEN_DIR)
 	$(LEX) -o $@ $<
 
+# Disable the implicit rule for .y files, which breaks parser.c
+%.c: %.y
+
 
 ## Normal compilation rules
 
