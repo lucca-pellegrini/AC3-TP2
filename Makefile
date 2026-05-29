@@ -8,10 +8,10 @@ CC      ?= cc
 LEX     ?= flex
 YACC    ?= bison
 CFLAGS  := -std=c23 -Wall -Wextra -Wpedantic -D_GNU_SOURCE -O3
-# Generated flex/bison sources tend to emit code that trips strict
-# warnings; relax just for them.
-GEN_CFLAGS := -std=c23 -D_GNU_SOURCE -O3 -Wno-unused-function -Wno-unused-but-set-variable
+# Generated flex/bison sources tend to emit code that trips strict warnings
+GEN_CFLAGS := $(CFLAGS) -Wno-unused-function -Wno-unused-but-set-variable
 LDFLAGS := -lm
+YFLAGS  := -d --warnings=no-yacc
 
 # Hand-written sources.
 SRC     := src/tomasulo.c src/parser.c src/display.c src/main.c
@@ -44,7 +44,7 @@ src/lex.parser.c: src/parser.l src/parser.tab.h
 
 # Bison produces both the .tab.c parser and the .tab.h with token codes.
 src/parser.tab.c src/parser.tab.h: src/parser.y
-	$(YACC) -d -o src/parser.tab.c $<
+	$(YACC) $(YFLAGS) -d -o src/parser.tab.c $<
 
 # Hand-written .c -> .o with strict warnings.
 src/%.o: src/%.c $(GEN_H)
