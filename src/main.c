@@ -18,14 +18,38 @@
 static void usage(const char *prog)
 {
 	fprintf(stderr,
-		"Tomasulo Algorithm Simulator\n\n"
-		"Usage: %s <input.tom> [options]\n\n"
+		"A Tomasulo Algorithm Simulator\n\n"
+		"Usage: %s [OPTIONS] [<FILE>]\n\n"
+		"Positional arguments:\n"
+		"  <FILE>               Optional input file with simulation configuration.\n"
+		"                       If omitted or set to ‘-’, input is read from stdin.\n\n"
 		"Options:\n"
-		"  -b          Batch mode (print all cycles, no pause)\n"
-		"  -q          Quiet mode (only print final state)\n"
-		"  -o <file>   Write output to file (default: stdout)\n"
-		"  -h          Show this help\n",
-		prog);
+		"  -b, --batch          Batch mode: print all cycles immediately (no pausing).\n"
+		"  -q, --quiet          Quiet mode: only print the final simulation state.\n"
+		"  -o, --output=<file>  Write output to <file> (default: stdout).\n"
+		"  -h, --help           Show this help message and exit.\n\n"
+		"Examples:\n"
+		"  %s program.tom\n"
+		"  %s -b -o result.log program.tom\n"
+		"  %s -q - < program.tom\n\n"
+		"Example program:\n\n"
+		"    cycles { ADD.D  = 2; SUB.D  = 2; MULT.D = 4; DIV.D  = 10; }\n"
+		"    units { ADD.D  = 1; MULT.D = 1 }\n"
+		"    registers { F4 = 2.0; F6 = 10.0 }\n\n"
+		"    instructions {\n"
+		"        ADDD  F8  F4  F6\n"
+		"        MULTD F10 F8  F8\n"
+		"        SUBD  F12 F10 F4\n"
+		"    }\n\n"
+		"Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>\n"
+		"            2026 Paulo Dimas Junior <paulo.junior.1478361@sga.pucminas.br>\n"
+		"            2026 Amanda Canizela Guimarães <amanda.canizela@gmail.com>\n"
+		"            2026 Ariel Inácio Jordão <arielijordao@gmail.com>\n"
+		"            2026 Pedro Vitor Andrade <pedrovitor0826@gmail.com>\n\n"
+		"Permission to use, copy, modify, and/or distribute this software for any\n"
+		"purpose with or without fee is hereby granted, provided that the above\n"
+		"copyright notice and this permission notice appear in all copies.\n",
+		prog, prog, prog, prog);
 }
 
 int main(int argc, char *argv[])
