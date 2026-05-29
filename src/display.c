@@ -428,9 +428,9 @@ void display_final(FILE *out, const Simulator *sim)
 
 	fprintf(out, "\n");
 	display_separator(out, 61, "SIMULATION COMPLETE");
-	fprintf(out, " %sTotal cycles:%s %s%s%d%s\n", bold, reset, bold, green, sim->cycle, reset);
-	fprintf(out, " %sInstructions:%s %s%s%d%s\n", bold, reset, bold, yellow,
-		sim->num_instructions, reset);
+	// ── Instruction Status Table ──
+	display_instructions(out, sim);
+
 
 	// Calculate performance metrics
 	double cpi = (sim->num_instructions > 0) ? (double)sim->cycle / sim->num_instructions : 0.0;
@@ -475,6 +475,9 @@ void display_final(FILE *out, const Simulator *sim)
 
 	// ── Performance Metrics ──
 	display_separator(out, 61, "Performance Metrics");
+	fprintf(out, " %sTotal cycles:%s %s%s%d%s\n", bold, reset, bold, green, sim->cycle, reset);
+	fprintf(out, " %sInstructions:%s %s%s%d%s\n", bold, reset, bold, yellow,
+		sim->num_instructions, reset);
 	fprintf(out, " %sCPI (Cycles/Instruction):%s %s%s%.3f%s\n", bold, reset, bold, cyan, cpi,
 		reset);
 	fprintf(out, " %sIPC (Instructions/Cycle):%s %s%s%.3f%s\n", bold, reset, bold, cyan, ipc,
@@ -541,9 +544,6 @@ void display_final(FILE *out, const Simulator *sim)
 		reset);
 	fprintf(out, " %sFull cycles:%s %s%d%s %s(%.1f%%)%s\n", bold, reset, cyan,
 		s->rob_full_cycles, reset, dim, rob_full_pct, reset);
-
-	// ── Instruction Status Table ──
-	display_instructions(out, sim);
 
 	// ── Final Register Values ──
 	display_separator(out, 61, "Final Register Values");
