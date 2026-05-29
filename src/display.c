@@ -182,7 +182,7 @@ void display_rs(FILE *out, const Simulator *sim)
 	const char *tag_color = C(out, ANSI_YELLOW);
 	const char *cycle_color = C(out, ANSI_BR_CYAN);
 
-	display_separator(out, 64, "Reservation Stations");
+	display_separator(out, 59, "Reservation Stations");
 
 	fprintf(out, "%s%s", bold, C(out, ANSI_UNDER));
 	fprintf(out, " %-6s  %-4s  %-6s  %8s  %8s  %4s  %4s  %4s", "Name", "Tag", "Op", "Vj", "Vk",
@@ -287,14 +287,12 @@ void display_rob(FILE *out, const Simulator *sim)
 	const char *op_color = C(out, ANSI_BR_MAGENTA);
 	const char *reg_color = C(out, ANSI_BR_BLUE);
 	const char *val_color = C(out, ANSI_CYAN);
-	const char *busy_yes = C(out, ANSI_BR_GREEN);
 	const char *cdb_wait_color = C(out, ANSI_BR_RED);
 
-	display_separator(out, 50, "Reorder Buffer");
+	display_separator(out, 45, "Reorder Buffer");
 
 	fprintf(out, "%s%s", bold, C(out, ANSI_UNDER));
-	fprintf(out, " %-4s  %-3s  %-10s  %-6s  %-6s  %10s", "Tag", "Occ", "State", "Op", "Dest",
-		"Value");
+	fprintf(out, " %-4s  %-10s  %-6s  %-6s  %10s", "Tag", "State", "Op", "Dest", "Value");
 	fprintf(out, "%s\n", reset);
 
 	// First pass: count how many are waiting for CDB
@@ -320,24 +318,35 @@ void display_rob(FILE *out, const Simulator *sim)
 		// Check if this entry is waiting for CDB (contention)
 		bool waiting_cdb = is_waiting_for_cdb(sim, i + 1);
 
+		// Format value: show "-" if not yet written, actual value otherwise
+		char value_buf[16];
+		const char *value_color_to_use;
+		if (!e->written && e->state != ROB_COMMIT) {
+			// Not yet executed/written - show gray dash
+			snprintf(value_buf, sizeof(value_buf), "-");
+			value_color_to_use = dim;
+		} else {
+			// Has a value - show it
+			snprintf(value_buf, sizeof(value_buf), "%.2f", e->value);
+			value_color_to_use = val_color;
+		}
+
 		// Show state with CDB wait indicator
 		char state_buf[24];
 		if (waiting_cdb && cdb_waiters > 1) {
 			// Multiple waiting = contention, show "Write[CDB]" in red
 			snprintf(state_buf, sizeof(state_buf), "Write");
 			fprintf(out,
-				" %s#%-3d%s  %s%-3s%s  %s%s%-5s%s%s[CDB]%s  %s%-6s%s  "
-				"%s%-6s%s  %s%10.2f%s\n",
-				tag_color, i + 1, reset, busy_yes, "Yes", reset, bold,
-				cdb_wait_color, state_buf, reset, cdb_wait_color, reset, op_color,
-				opcode_name(e->op), reset, reg_color, dest_buf, reset, val_color,
-				e->value, reset);
+				" %s#%-3d%s  %s%s%-5s%s%s[CDB]%s  %s%-6s%s  "
+				"%s%-6s%s  %s%10s%s\n",
+				tag_color, i + 1, reset, bold, cdb_wait_color, state_buf, reset,
+				cdb_wait_color, reset, op_color, opcode_name(e->op), reset,
+				reg_color, dest_buf, reset, value_color_to_use, value_buf, reset);
 		} else {
-			fprintf(out,
-				" %s#%-3d%s  %s%-3s%s  %s%-10s%s  %s%-6s%s  %s%-6s%s  %s%10.2f%s\n",
-				tag_color, i + 1, reset, busy_yes, "Yes", reset, state_col,
-				rob_state_name(e->state), reset, op_color, opcode_name(e->op),
-				reset, reg_color, dest_buf, reset, val_color, e->value, reset);
+			fprintf(out, " %s#%-3d%s  %s%-10s%s  %s%-6s%s  %s%-6s%s  %s%10s%s\n",
+				tag_color, i + 1, reset, state_col, rob_state_name(e->state), reset,
+				op_color, opcode_name(e->op), reset, reg_color, dest_buf, reset,
+				value_color_to_use, value_buf, reset);
 		}
 	}
 
