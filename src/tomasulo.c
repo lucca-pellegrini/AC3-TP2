@@ -162,7 +162,7 @@ static RSType rs_type_for_op(Opcode op)
 	case OP_SD:
 		return RS_STORE;
 	default:
-		return RS_ADD;
+		assert(false);
 	}
 }
 
@@ -214,7 +214,7 @@ static bool rob_full(const Simulator *sim)
 static int rob_alloc(Simulator *sim, const Instruction *inst)
 {
 	if (rob_full(sim))
-		return 0;
+		assert(false);
 
 	ROBEntry *e = &sim->rob[sim->rob_tail];
 	memset(e, 0, sizeof(*e));
@@ -277,8 +277,7 @@ static void stage_issue(Simulator *sim)
 
 	// Allocate a new tag on the ROB
 	int tag = rob_alloc(sim, inst);
-	if (tag == 0)
-		return;
+	assert(tag);
 
 	assert(0 <= tag && tag < MAX_FP_REGISTERS);
 
@@ -338,7 +337,6 @@ static double compute_result(const ReservationStation *rs)
 		// No time to implement actual memory, just return address
 		return rs->A + rs->Vj;
 	case OP_SD:
-		return NAN;
 	default:
 		assert(false);
 	}
