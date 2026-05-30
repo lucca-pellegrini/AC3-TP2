@@ -18,7 +18,11 @@
 #define MAX_RS 16
 #define MAX_FP_REGISTERS 32
 #define MAX_NAME_LEN 16
-#define ROB_SIZE 32 // FIXME: ROB size ought to be configurable, but I'm lazy!
+
+// FIXME: ROB size ought to be configurable in the input, but I'm lazy!
+// NOTE:  any ROB size lower than 3 breaks CDB-contention, timing, hazard, and
+//        RS occupancy unit tests.
+#define ROB_SIZE 4
 
 /// Data types and their related functions ////////////////////////////////////
 
