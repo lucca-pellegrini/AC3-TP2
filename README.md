@@ -100,7 +100,7 @@ To facilitate editing, this repository includes a [NeoVim](https://neovim.io/)
 syntax file at
 [`.config/nvim/syntax/tomasulo.vim`](.config/nvim/syntax/tomasulo.vim) and an
 [`.nvimrc`](.nvimrc) file that automatically enables syntax highlighting for
-`.tom` files, if the `exrc` option is set (see `:help 'exrc` for details).
+`.tom` files if the `exrc` option is set (see `:help 'exrc` for details).
 
 #### Supported Instructions
 
@@ -112,7 +112,7 @@ syntax file at
 - `SD Fs, offset(Rd)`: Store double to memory
 
 There are a total of 32 floating-point registers, `F0`–`F31`. The integer
-registers, `R0`–`R31` are just syntactic sugar: the register file only stores
+registers, `R0`–`R31`, are just syntatic sugar: the register file only stores
 32 values, and only floating-point ones.
 
 #### Example (from [`tests/wide_issue.tom`](tests/wide_issue.tom))
