@@ -12,48 +12,49 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// ── Limits ──────────────────────────────────────────────────────────────────
+/// Configuration /////////////////////////////////////////////////////////////
 
 #define MAX_INSTRUCTIONS 64
 #define MAX_RS 16
 #define MAX_FP_REGISTERS 32
 #define MAX_NAME_LEN 16
-#define ROB_SIZE 32
+#define ROB_SIZE 32 // FIXME: ROB size ought to be configurable, but I'm lazy!
 
-// ── Opcodes ─────────────────────────────────────────────────────────────────
+/// Data types and their related functions ////////////////////////////////////
 
-typedef enum {
-	OP_ADDD,
-	OP_SUBD,
-	OP_MULTD,
-	OP_DIVD,
-	OP_LD,
-	OP_SD,
-	OP_COUNT, // sentinel
+// Supported opcodes
+typedef enum opcode {
+	OP_ADDD, // Double-precision floating-point addition
+	OP_SUBD, // Double-precision floating-point subtraction
+	OP_MULTD, // Double-precision floating-point multiplication
+	OP_DIVD, // Double-precision floating-point division
+	OP_LD, // Load a double-precision floating-point word
+	OP_SD, // Store a double-precision floating-point word
+	OP_COUNT, // Sentinel value (invalid opcode)
 } Opcode;
 
+// Get opcode name
 const char *opcode_name(Opcode op);
+// Get opcode from name
 Opcode opcode_from_str(const char *s);
 
-// ── Instruction ─────────────────────────────────────────────────────────────
-
-typedef struct {
+// Internal representation of an instruction
+typedef struct instruction {
 	Opcode op;
-	int dest; // destination register index (Fx), or value source for SD
-	int src1; // source register 1 / base register for LD/SD
-	int src2; // source register 2
-	int imm; // immediate/offset for LD/SD
+	int dest; // Destination register index, or value source for SD
+	int src1; // Source register 1, or base register for load/store
+	int src2; // Source register 2
+	int imm; // Immediate, or offset for load/store
 
-	// Timing bookkeeping (filled during simulation)
-	int issue_cycle;
-	int exec_start;
-	int exec_end;
-	int write_cycle;
+	// Timing bookkeeping, filled during simulation
+	int issue_cycle; // Cycle when the instruction was issued
+	int exec_start; // Cycle when the instruction started executing
+	int exec_end; // Cycle when the instruction finished executing
+	int write_cycle; // Cycle when the instruction broadcast to CDB
 } Instruction;
 
-// ── Reservation Station ─────────────────────────────────────────────────────
-
-typedef enum {
+// Reservation station types
+typedef enum rs_type {
 	RS_ADD,
 	RS_MULT,
 	RS_LOAD,
@@ -61,59 +62,62 @@ typedef enum {
 	RS_TYPE_COUNT,
 } RSType;
 
-typedef struct {
-	bool busy;
-	Opcode op;
-	double Vj, Vk;
-	int Qj, Qk; // 0 = value ready, >0 = ROB tag of producer
-	int dest; // ROB tag
-	int A; // address/offset for LD/SD
-	int cycles_left;
-	bool executing;
-	double result;
-	int instr_idx; // index into instruction array
-	RSType type;
-	int unit_id; // e.g., Add1 = 1, Add2 = 2 ...
+// Internal representation of a reservation station (RS)
+typedef struct reservation_station {
+	bool busy; // Whether there's an instruction in
+	Opcode op; // Opcode of the instruction that's in
+	double Vj, Vk; // Values of the operands
+	int Qj, Qk; // Tag of values producers (0 when ready)
+	int dest; // Reoder buffer tag of the destination
+	int A; // Address offset for load/store
+	int cycles_left; // How many cycles are left for the execution
+	bool executing; // Whether we're already executing
+	double result; // What the result of the operation is
+	int instr_idx; // Index into the instruction array (input queue)
+	RSType type; // What type of station we are (this doesn't change)
+	int unit_id; // Which station of that type we are (e.g.: Add1, St2, etc.)
 } ReservationStation;
 
+// Empty Reservation Station without losing the type and numeric id
 void rs_clear(ReservationStation *rs);
 
-// ── Register Alias Table (RAT) ─────────────────────────────────────────────
-
-typedef struct {
-	int Qi[MAX_FP_REGISTERS]; // 0 = value committed / ready
+// Internal representation of the Register Alias Table (RAT)
+typedef struct register_status {
+	// Array of ROB tags that write to tag of that index (0 means committed)
+	int Qi[MAX_FP_REGISTERS];
 } RegisterStatus;
 
-// ── Reorder Buffer Entry ────────────────────────────────────────────────────
-
-typedef enum {
+// Possible states of a Reoder Buffer (ROB) entry
+typedef enum rob_state {
 	ROB_ISSUE,
 	ROB_EXECUTING,
 	ROB_WRITE_RESULT,
 	ROB_COMMIT,
 } ROBState;
 
-typedef struct {
-	bool busy;
-	ROBState state;
-	Opcode op;
-	int dest_reg;
-	double value;
-	bool addr_ready;
-	double addr;
-	bool written; // true after CDB broadcast (or SD write), ready to commit
+// Internal representation of a Reoder Buffer (ROB) entry
+typedef struct rob_entry {
+	bool busy; // Whether there's an instruction in
+	ROBState state; // State of the instruction
+	Opcode op; // Opcode of the instruction
+	int dest_reg; // Where we're going to write when done
+	double value; // Value to be written (result of operation)
+	bool addr_ready; // Whether the effective address for LD/SD is computed
+	double addr; // What the effective address for LD/SD is
+	bool written; // Whether we've broadcast to CDB (or SD write)
 } ROBEntry;
 
-// ── Configuration ───────────────────────────────────────────────────────────
-
-typedef struct {
-	int latency[OP_COUNT]; // execution cycles per opcode
-	int num_rs[RS_TYPE_COUNT]; // number of reservation stations per type
+// Simulator configuration.
+typedef struct tomasulo_config {
+	int latency[OP_COUNT]; // How many execution cycles are taken per opcode
+	int num_rs[RS_TYPE_COUNT]; // Number of reservation stations of each type
 } TomasuloConfig;
 
-// ── Simulation Statistics ───────────────────────────────────────────────────
+// Return default configuration struct
+TomasuloConfig config_default(void);
 
-typedef struct {
+// Structure to keep track of simulation statistics
+typedef struct simulator_stats {
 	// Functional Unit Utilization (indexed by RSType: ADD, MULT, LOAD, STORE)
 	int fu_busy_cycles[RS_TYPE_COUNT]; // cycles each FU type was busy
 	int fu_peak_occupancy[RS_TYPE_COUNT]; // max concurrent busy units per type
@@ -135,44 +139,40 @@ typedef struct {
 	int rob_full_cycles; // cycles where ROB was full
 } SimulatorStats;
 
-// Provide sensible defaults
-TomasuloConfig config_default(void);
-
-// ── Simulator State ─────────────────────────────────────────────────────────
-
-typedef struct {
+// Structure to represent simulator state
+typedef struct simulator {
 	TomasuloConfig cfg;
 
-	Instruction instructions[MAX_INSTRUCTIONS];
-	int num_instructions;
-	int next_issue; // index of next instruction to issue
+	Instruction instructions[MAX_INSTRUCTIONS]; // Instruction queue
+	int num_instructions; // Number of instructions in queue
+	int next_issue; // Index of the next instruction to issue
 
-	ReservationStation rs[MAX_RS];
-	int num_rs; // total RS entries allocated
+	ReservationStation rs[MAX_RS]; // Reservation stations list
+	int num_rs; // Number of RS entries allocated
 
-	double fp_regs[MAX_FP_REGISTERS]; // architectural register file
-	RegisterStatus rat;
+	double fp_regs[MAX_FP_REGISTERS]; // Architectural register file
+	RegisterStatus rat; // Register Alias Table (RAT)
 
-	ROBEntry rob[ROB_SIZE];
-	int rob_head;
-	int rob_tail;
+	ROBEntry rob[ROB_SIZE]; // Reoder Buffer (ROB)
+	int rob_head; // Index of first ROB entry
+	int rob_tail; // Index of last ROB entry
 
-	int cycle;
-	int committed;
+	int cycle; // Clock cycles counter
+	int committed; // Counter of committed instructions
 
 	// CDB: single-bus, one result per cycle
-	bool cdb_valid;
-	int cdb_tag;
-	double cdb_value;
+	bool cdb_valid; // Whether there's something being broadcast on the CDB
+	int cdb_tag; // What tag's result is being broadcast
+	double cdb_value; // What the value being broadcast is
 
-	// Statistics (collected during simulation)
+	// Simulator statistics (collected during simulation)
 	SimulatorStats stats;
 
-	// Input filename for display purposes
+	// Simulation name (merely for display purposes)
 	const char *input_filename;
 } Simulator;
 
-// ── Simulator API ───────────────────────────────────────────────────────────
+/// Public simulator API //////////////////////////////////////////////////////
 
 // Initialize the simulator with a given config. Must be called before
 // adding instructions.
@@ -181,19 +181,22 @@ void sim_init(Simulator *sim, const TomasuloConfig *cfg);
 // Set initial register values.  reg_idx must be in [0, MAX_FP_REGISTERS).
 void sim_set_reg(Simulator *sim, int reg_idx, double value);
 
-// Add an instruction to the queue.  Returns false if full.
+// Add an instruction to the queue. Returns false if full.
 bool sim_add_instruction(Simulator *sim, Instruction inst);
 
-// Execute one clock cycle (commit -> write -> execute -> issue).
-// Returns true if the simulation is still running.
+// Run a single step of the simulator. Returns `false` if finished.
+// Returns `true` if the simulation is still running.
 bool sim_step(Simulator *sim);
 
-// Run the full simulation until completion (or max_cycles exceeded).
+// Run the entire simulation, up to the configured cycle limit.
 // Returns total cycles.
 int sim_run(Simulator *sim, int max_cycles);
 
-// ── Queries (for display / testing) ─────────────────────────────────────────
+/// Queries (for display / testing) ///////////////////////////////////////////
 
+// Returns whether the simulation has finished.
 bool sim_done(const Simulator *sim);
+// Map Reorder State name to string
 const char *rob_state_name(ROBState s);
+// Map Reservation Station type to its prefix
 const char *rs_type_prefix(RSType t);
