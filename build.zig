@@ -89,7 +89,9 @@ pub fn build(b: *std.Build) void {
             .abi = .musl,
         },
     });
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize = b.standardOptimizeOption(.{
+        .preferred_optimize_mode = .ReleaseFast,
+    });
 
     // Main executable
 
@@ -97,6 +99,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+        // .strip = true,
     });
 
     exe_mod.addCSourceFiles(.{
