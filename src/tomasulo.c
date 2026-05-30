@@ -559,21 +559,7 @@ static void collect_stats(Simulator *sim)
 			s->fu_peak_occupancy[type] = fu_busy[type];
 	}
 
-	// Count how many RS want to broadcast in this cycle (CDB contention)
-	int cdb_requests = 0;
-	for (int i = 0; i < sim->num_rs; ++i) {
-		ReservationStation *rs = &sim->rs[i];
-		if (!rs->busy)
-			continue;
-		ROBEntry *rob = rob_get(sim, rs->dest);
-		Instruction *inst = &sim->instructions[rs->instr_idx];
-		// Check if RS wants CDB
-		if (rob->state == ROB_WRITE_RESULT && rs->op != OP_SD &&
-		    inst->exec_end != sim->cycle)
-			++cdb_requests;
-	}
-	if (cdb_requests > 1)
-		++s->cdb_contention_cycles;
+	// CDB statistics
 	if (sim->cdb_valid) {
 		++s->cdb_busy_cycles;
 		++s->cdb_total_requests;
@@ -601,13 +587,29 @@ bool sim_step(Simulator *sim)
 
 	++sim->cycle;
 
+	// Collect CDB contention statistics before modifying state
+	int cdb_requests = 0;
+	for (int i = 0; i < sim->num_rs; ++i) {
+		ReservationStation *rs = &sim->rs[i];
+		if (!rs->busy)
+			continue;
+		ROBEntry *rob = rob_get(sim, rs->dest);
+		Instruction *inst = &sim->instructions[rs->instr_idx];
+		// Check if RS wants CDB (ready to write but hasn't written yet)
+		if (rob->state == ROB_WRITE_RESULT && rs->op != OP_SD &&
+		    inst->exec_end != sim->cycle && !rob->written)
+			++cdb_requests;
+	}
+	if (cdb_requests > 1)
+		++sim->stats.cdb_contention_cycles;
+
 	// Process back-to-front to prevent same-cycle advancement!
 	stage_commit(sim);
 	stage_write_result(sim);
 	stage_execute(sim);
 	stage_issue(sim);
 
-	// Collect statistics.
+	// Collect other statistics.
 	collect_stats(sim);
 
 	return !sim_done(sim);
