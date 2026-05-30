@@ -8,16 +8,16 @@
 // Test modules - import references trigger test discovery
 comptime {
     _ = @import("tests/helpers.zig");
+    _ = @import("tests/parser_syntax.zig");
     _ = @import("tests/parser.zig");
-    _ = @import("tests/simulator.zig");
     _ = @import("tests/operations.zig");
+    _ = @import("tests/simulator.zig");
     _ = @import("tests/timing.zig");
     _ = @import("tests/hazards.zig");
-    _ = @import("tests/cdb.zig");
     _ = @import("tests/memory.zig");
-    _ = @import("tests/complex.zig");
-    _ = @import("tests/parser_syntax.zig");
+    _ = @import("tests/cdb.zig");
     _ = @import("tests/stats.zig");
-    _ = @import("tests/fuzz.zig");
+    _ = @import("tests/complex.zig");
     _ = @import("tests/display.zig");
+    _ = @import("tests/fuzz.zig");
 }
