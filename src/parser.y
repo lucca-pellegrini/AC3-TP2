@@ -73,7 +73,7 @@ static RSType op_to_rs_type(Opcode op)
     case OP_DIVD:  return RS_MULT;
     case OP_LD:    return RS_LOAD;
     case OP_SD:    return RS_STORE;
-    default:       return RS_ADD; /* unreachable: lexer rejects bad opcodes */
+    default:       __builtin_unreachable(); /* lexer rejects bad opcodes! */
     }
 }
 
