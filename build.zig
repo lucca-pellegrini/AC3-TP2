@@ -161,4 +161,20 @@ pub fn build(b: *std.Build) void {
     const clean_step = b.step("clean", "Clean build artifacts");
     const rm_rf = b.addSystemCommand(&.{ "rm", "-rf", "zig-out", ".zig-cache", "build" });
     clean_step.dependOn(&rm_rf.step);
+
+    // Code coverage with kcov
+
+    const cov_step = b.step("cov", "Generate code coverage with kcov");
+
+    // Ensure output directory exists
+    const mkdir = b.addSystemCommand(&.{ "mkdir", "-p", "zig-out/coverage" });
+
+    // Run kcov on the test binary, output to zig-out/coverage
+    const kcov_run = b.addSystemCommand(&.{ "kcov", "--clean" });
+    kcov_run.addPrefixedDirectoryArg("--include-path=", b.path("src"));
+    kcov_run.addArg("zig-out/coverage");
+    kcov_run.addArtifactArg(tests);
+    kcov_run.step.dependOn(&mkdir.step);
+
+    cov_step.dependOn(&kcov_run.step);
 }
