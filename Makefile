@@ -14,6 +14,7 @@ SRC_DIR  := src
 INC_DIR  := include
 OUT_DIR  := build
 OBJ_DIR  := $(OUT_DIR)/obj
+DEP_DIR  := $(OUT_DIR)/dep
 GEN_DIR  := $(OUT_DIR)/gen
 
 
@@ -22,6 +23,7 @@ GEN_DIR  := $(OUT_DIR)/gen
 # Compiler flags
 CFLAGS   += -std=c23 -Wall -Wextra -Wpedantic -O3 -D_GNU_SOURCE
 GEN_CFLAGS := $(CFLAGS) -Wno-unused-function -Wno-unused-but-set-variable
+DEPFLAGS := -MMD -MP
 
 LDFLAGS  += -lm
 YFLAGS   := -d --warnings=no-yacc
@@ -58,6 +60,11 @@ OBJS     := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 GEN_C    := $(GEN_DIR)/parser.tab.c $(GEN_DIR)/lex.parser.c
 GEN_H    := $(GEN_DIR)/parser.tab.h
 GEN_O    := $(patsubst $(GEN_DIR)/%.o,$(OBJ_DIR)/%.o,$(GEN_C:.c=.o))
+
+# Dependency lists
+DEPS := \
+	$(patsubst $(OBJ_DIR)/%.o,$(DEP_DIR)/%.d,$(OBJS)) \
+	$(patsubst $(OBJ_DIR)/%.o,$(DEP_DIR)/%.d,$(GEN_O))
 
 # Final binary
 BIN      := $(OUT_DIR)/$(NAME)
@@ -119,15 +126,17 @@ $(GEN_DIR)/lex.%.c: $(SRC_DIR)/%.l $(GEN_DIR)/%.tab.h | $(GEN_DIR)
 ## Normal compilation rules
 
 # Hand-written sources
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(GEN_H) | $(OBJ_DIR)
-	$(CC_WRAPPER) $(CC) -I$(INC_DIR) -I$(GEN_DIR) $(CFLAGS) -c $< -o $@
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c $(GEN_H) | $(OBJ_DIR) $(DEP_DIR)
+	$(CC_WRAPPER) $(CC) -I$(INC_DIR) -I$(GEN_DIR) $(CFLAGS) \
+		$(DEPFLAGS) -MF $(DEP_DIR)/$*.d -MT $@ -c $< -o $@
 
 # Generated sources
-$(GEN_O): $(OBJ_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_H) | $(GEN_DIR)
-	$(CC_WRAPPER) $(CC) -I$(INC_DIR) -I$(GEN_DIR) $(GEN_CFLAGS) -c $< -o $@
+$(GEN_O): $(OBJ_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_H) | $(GEN_DIR) $(DEP_DIR)
+	$(CC_WRAPPER) $(CC) -I$(INC_DIR) -I$(GEN_DIR) $(GEN_CFLAGS) \
+		$(DEPFLAGS) -MF $(DEP_DIR)/$*.d -MT $@ -c $< -o $@
 
 # How to create directories directories
-$(OUT_DIR) $(OBJ_DIR) $(GEN_DIR):
+$(OUT_DIR) $(OBJ_DIR) $(DEP_DIR) $(GEN_DIR):
 	$(MKDIR) $@
 
 # How to link the final executable
@@ -219,3 +228,5 @@ clean:
 
 .PHONY: all clean pgo release \
 	run test run-stripped test-stripped run-release test-release
+
+-include $(DEPS)
