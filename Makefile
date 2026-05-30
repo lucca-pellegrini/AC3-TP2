@@ -2,31 +2,30 @@
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
 
 ## Project configuration
-NAME     ?= tomasulo
+NAME    ?= tomasulo
 
 # Tools
-CC       := musl-clang
-LEX      := flex
-YACC     := bison
+CC      := musl-clang
+LEX     := flex
+YACC    := bison
 
 # Directories
-SRC_DIR  := src
-INC_DIR  := include
-OUT_DIR  := build
-OBJ_DIR  := $(OUT_DIR)/obj
-DEP_DIR  := $(OUT_DIR)/dep
-GEN_DIR  := $(OUT_DIR)/gen
+SRC_DIR := src
+INC_DIR := include
+OUT_DIR := build
+OBJ_DIR := $(OUT_DIR)/obj
+DEP_DIR := $(OUT_DIR)/dep
+GEN_DIR := $(OUT_DIR)/gen
 
 
 ## Tools configuration
 
 # Compiler flags
-CFLAGS   += -std=c23 -Wall -Wextra -Wpedantic -O3 -D_GNU_SOURCE
+CFLAGS     += -std=c23 -Wall -Wextra -Wpedantic -O3 -D_GNU_SOURCE
 GEN_CFLAGS := $(CFLAGS) -Wno-unused-function -Wno-unused-but-set-variable
-DEPFLAGS := -MMD -MP
-
-LDFLAGS  += -lm
-YFLAGS   := -d --warnings=no-yacc
+DEPFLAGS   := -MMD -MP
+LDFLAGS    += -flto=full -lm
+YFLAGS     := -d --warnings=no-yacc
 
 # Use static linking if compiler is musl
 ifneq ($(findstring musl-,$(CC)),)
@@ -38,12 +37,6 @@ CC_VERSION := $(shell $(CC) --version 2>/dev/null)
 ifneq ($(findstring clang,$(CC_VERSION)),)
     CFLAGS += -Wno-unused-command-line-argument
     GEN_CFLAGS += -Wno-unused-command-line-argument
-endif
-
-# FLTO support
-ifdef FLTO
-    CFLAGS  += -flto=auto
-    LDFLAGS += -flto=auto
 endif
 
 # Debug mode
