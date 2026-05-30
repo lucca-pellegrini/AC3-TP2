@@ -454,3 +454,87 @@ test "parser_syntax: positive cycles and units accepted" {
     try testing.expectEqual(@as(c_int, 1), p.cfg.num_rs[c.RS_ADD]);
     try testing.expectEqual(@as(c_int, 2), p.cfg.num_rs[c.RS_MULT]);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Instruction limit tests (too many instructions)
+// ═══════════════════════════════════════════════════════════════════════════
+
+test "parser_syntax: too many instructions rejected (REG REG REG form)" {
+    // Generate MAX_INSTRUCTIONS + 1 arithmetic instructions
+    comptime var src: []const u8 = "instructions {\n";
+    inline for (0..c.MAX_INSTRUCTIONS + 1) |_| {
+        src = src ++ "    ADDD F0 F0 F0\n";
+    }
+    src = src ++ "}";
+    try parseExpectFail(src);
+}
+
+test "parser_syntax: too many instructions rejected (REG INT REG form)" {
+    // Generate MAX_INSTRUCTIONS + 1 load instructions with bare offset
+    comptime var src: []const u8 = "instructions {\n";
+    inline for (0..c.MAX_INSTRUCTIONS + 1) |_| {
+        src = src ++ "    L.D F0 0 R0\n";
+    }
+    src = src ++ "}";
+    try parseExpectFail(src);
+}
+
+test "parser_syntax: too many instructions rejected (REG INT(REG) form)" {
+    // Generate MAX_INSTRUCTIONS + 1 load instructions with offset(base)
+    comptime var src: []const u8 = "instructions {\n";
+    inline for (0..c.MAX_INSTRUCTIONS + 1) |_| {
+        src = src ++ "    L.D F0 0(R0)\n";
+    }
+    src = src ++ "}";
+    try parseExpectFail(src);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Arithmetic opcodes with immediate offset rejected
+// ═══════════════════════════════════════════════════════════════════════════
+
+test "parser_syntax: SUBD with INT REG form rejected" {
+    try parseExpectFail(
+        \\instructions { SUBD F1 0 R2 }
+    );
+}
+
+test "parser_syntax: MULTD with INT REG form rejected" {
+    try parseExpectFail(
+        \\instructions { MULTD F1 0 R2 }
+    );
+}
+
+test "parser_syntax: DIVD with INT REG form rejected" {
+    try parseExpectFail(
+        \\instructions { DIVD F1 0 R2 }
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Lexer error cases
+// ═══════════════════════════════════════════════════════════════════════════
+
+test "parser_syntax: unexpected character rejected" {
+    try parseExpectFail(
+        \\instructions { @ }
+    );
+}
+
+test "parser_syntax: unexpected dollar sign rejected" {
+    try parseExpectFail(
+        \\instructions { ADDD $F0 F0 F0 }
+    );
+}
+
+test "parser_syntax: long identifier is truncated and still works" {
+    // An identifier longer than MAX_NAME_LEN (16) should be truncated but
+    // still match if the first 16 characters (minus punctuation) match a
+    // known keyword. "INSTRUCTIONS" is 12 chars, so add extra padding.
+    const src =
+        \\INSTRUCTIONS________________extra { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    try testing.expectEqual(@as(c_int, 1), p.sim.num_instructions);
+}

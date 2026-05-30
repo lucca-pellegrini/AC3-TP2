@@ -92,3 +92,46 @@ test "memory: LD feeds MUL feeds ADD chain" {
     try testing.expectApproxEqAbs(220.0, sim.fp_regs[2], 0.001);
     try testing.expectApproxEqAbs(230.0, sim.fp_regs[4], 0.001);
 }
+
+test "memory: SD waits for base address register (Qk hazard)" {
+    // This test covers the case where SD must wait for its base address
+    // register (stored in Qk) to be computed by a prior instruction.
+    // ADD.D F1, F2, F3 => F1 = base address
+    // S.D F4, 0(F1)    => store F4 at address F1+0 (must wait for F1)
+    var cfg = c.config_default();
+    cfg.latency[c.OP_ADDD] = 2;
+    cfg.latency[c.OP_SD] = 2;
+    var sim = initSim(&cfg);
+    c.sim_set_reg(&sim, 2, 50.0); // F2 = 50
+    c.sim_set_reg(&sim, 3, 50.0); // F3 = 50
+    c.sim_set_reg(&sim, 4, 42.0); // F4 = value to store
+    addInst(&sim, makeArithInst(c.OP_ADDD, 1, 2, 3)); // F1 = 50+50 = 100 (base addr)
+    addInst(&sim, makeMemInst(c.OP_SD, 4, 0, 1)); // Store F4 at 0(F1) - must wait for F1
+    _ = runToCompletion(&sim);
+    try testing.expect(c.sim_done(&sim));
+    // The store should complete; F1 should have the computed base address
+    try testing.expectApproxEqAbs(100.0, sim.fp_regs[1], 0.001);
+}
+
+test "memory: SD waits for both base and value (Qj and Qk hazards)" {
+    // Both the value to store (Qj) and the base address (Qk) are produced
+    // by prior instructions, so SD must wait for both.
+    // ADD.D F1, F2, F3 => F1 = base address
+    // ADD.D F4, F5, F6 => F4 = value to store
+    // S.D F4, 0(F1)    => store F4 at address F1+0 (waits for both F1 and F4)
+    var cfg = c.config_default();
+    cfg.latency[c.OP_ADDD] = 2;
+    cfg.latency[c.OP_SD] = 2;
+    var sim = initSim(&cfg);
+    c.sim_set_reg(&sim, 2, 50.0); // F2 = 50
+    c.sim_set_reg(&sim, 3, 50.0); // F3 = 50
+    c.sim_set_reg(&sim, 5, 10.0); // F5 = 10
+    c.sim_set_reg(&sim, 6, 32.0); // F6 = 32
+    addInst(&sim, makeArithInst(c.OP_ADDD, 1, 2, 3)); // F1 = 100 (base addr)
+    addInst(&sim, makeArithInst(c.OP_ADDD, 4, 5, 6)); // F4 = 42 (value to store)
+    addInst(&sim, makeMemInst(c.OP_SD, 4, 0, 1)); // Store F4 at 0(F1)
+    _ = runToCompletion(&sim);
+    try testing.expect(c.sim_done(&sim));
+    try testing.expectApproxEqAbs(100.0, sim.fp_regs[1], 0.001);
+    try testing.expectApproxEqAbs(42.0, sim.fp_regs[4], 0.001);
+}

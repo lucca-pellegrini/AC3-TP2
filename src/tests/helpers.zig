@@ -55,6 +55,10 @@ test "helpers: opcode_from_str invalid returns OP_COUNT" {
     try testing.expectEqual(@as(c_uint, c.OP_COUNT), c.opcode_from_str("123"));
 }
 
+test "helpers: opcode_from_str null returns OP_COUNT" {
+    try testing.expectEqual(@as(c_uint, c.OP_COUNT), c.opcode_from_str(null));
+}
+
 test "helpers: rob_state_name returns correct strings" {
     try testing.expectEqualStrings("Issue", std.mem.span(c.rob_state_name(c.ROB_ISSUE)));
     try testing.expectEqualStrings("Executing", std.mem.span(c.rob_state_name(c.ROB_EXECUTING)));
@@ -62,11 +66,23 @@ test "helpers: rob_state_name returns correct strings" {
     try testing.expectEqualStrings("Commit", std.mem.span(c.rob_state_name(c.ROB_COMMIT)));
 }
 
+test "helpers: rob_state_name returns ? for invalid state" {
+    // ROB_COMMIT is the last valid enum value, so anything beyond it is invalid
+    try testing.expectEqualStrings("?", std.mem.span(c.rob_state_name(c.ROB_COMMIT + 1)));
+    try testing.expectEqualStrings("?", std.mem.span(c.rob_state_name(99)));
+}
+
 test "helpers: rs_type_prefix returns correct strings" {
     try testing.expectEqualStrings("Add", std.mem.span(c.rs_type_prefix(c.RS_ADD)));
     try testing.expectEqualStrings("Mul", std.mem.span(c.rs_type_prefix(c.RS_MULT)));
     try testing.expectEqualStrings("Ld", std.mem.span(c.rs_type_prefix(c.RS_LOAD)));
     try testing.expectEqualStrings("St", std.mem.span(c.rs_type_prefix(c.RS_STORE)));
+}
+
+test "helpers: rs_type_prefix returns ?? for invalid type" {
+    // RS_STORE is the last valid enum value, so anything beyond it is invalid
+    try testing.expectEqualStrings("??", std.mem.span(c.rs_type_prefix(c.RS_TYPE_COUNT)));
+    try testing.expectEqualStrings("??", std.mem.span(c.rs_type_prefix(99)));
 }
 
 test "helpers: rs_clear preserves type and unit_id" {
