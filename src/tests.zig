@@ -19,4 +19,5 @@ comptime {
     _ = @import("tests/parser_syntax.zig");
     _ = @import("tests/stats.zig");
     _ = @import("tests/fuzz.zig");
+    _ = @import("tests/display.zig");
 }

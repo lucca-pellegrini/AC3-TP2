@@ -10,6 +10,12 @@ pub const testing = std.testing;
 pub const c = @cImport({
     @cInclude("tomasulo.h");
     @cInclude("parser.h");
+    @cInclude("display.h");
+    @cInclude("stdio.h");
+    @cInclude("unistd.h");
+    @cInclude("fcntl.h");
+    @cInclude("stdlib.h");
+    @cInclude("string.h");
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -85,13 +91,8 @@ pub fn getInst(sim: *const c.Simulator, idx: usize) c.Instruction {
 // Parser test helpers (using libc for temp files)
 // ═══════════════════════════════════════════════════════════════════════════
 
-pub const c_io = @cImport({
-    @cInclude("stdio.h");
-    @cInclude("unistd.h");
-    @cInclude("fcntl.h");
-    @cInclude("stdlib.h");
-    @cInclude("string.h");
-});
+// c_io is now the same as c (unified import)
+pub const c_io = c;
 
 /// Write `text` to a freshly-created temp file via libc and return its
 /// NUL-terminated path.  Caller frees with `freeTmpPath()`.
