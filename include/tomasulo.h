@@ -67,7 +67,7 @@ typedef struct {
 	double Vj, Vk;
 	int Qj, Qk; // 0 = value ready, >0 = ROB tag of producer
 	int dest; // ROB tag
-	double A; // address/offset for LD/SD
+	int A; // address/offset for LD/SD
 	int cycles_left;
 	bool executing;
 	double result;
