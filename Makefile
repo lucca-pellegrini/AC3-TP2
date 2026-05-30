@@ -93,6 +93,42 @@ endif
 # Default target
 all: $(COMPILE_COMMANDS_JSON) $(BIN)
 
+# List targets
+help:
+	@echo "A Tomasulo Algorithm Simulator — Makefile"
+	@echo
+	@echo "Usage: make [<OPTION>=<VALUE>...] [<TARGET>]"
+	@echo
+	@echo "Possible targets:"
+	@echo "  help          Display this help page."
+	@echo "  all           Build the Tomasulo Simulator at ‘./<OUT_DIR>/tomasulo’."
+	@echo "                  Requires a C23-capable compiler, Flex, and GNU Bison."
+	@echo "                  This is the default target if none is specified."
+	@echo "  clean         Clean up all build artifacts and delete the <OUT_DIR> dir."
+	@echo "  release       Compile the release build at ‘<OUT_DIR>/tomasulo-release’."
+	@echo "                  Requires the ‘upx’ command to be available."
+	@echo "  test          Run the simulator against all tests in the ‘tests/’ dir."
+	@echo "  cov           Run code coverage tests using all tests in the ‘tests/’"
+	@echo "                  directory. Requires the ‘kcov’ command to be available."
+	@echo "  pgo           Build the simulator using profile-guided optimization by"
+	@echo "                  running the simulator against all tests in ‘tests/’."
+	@echo "                  Cannot be used with static libc (which is the default)"
+	@echo "  run           Run the simulator (input is read from stdin)."
+	@echo
+	@echo "Options:"
+	@echo "  CC            What C compiler to use. Defaults to ‘musl-clang’."
+	@echo "                  If this matches the regex ‘^musl-.*’, the resulting"
+	@echo "                  binary will be statically linked."
+	@echo "  LEX           What lexical analyzer generator to use. Defaults to ‘flex’."
+	@echo "  YACC          What parser generator to use. Defaults to ‘bison’."
+	@echo "  NODEBUG       If set, causes debug symbols to be omitted."
+	@echo "  NOOPTIMIZE    If set, builds with ‘-O0’ (default is ‘-O3’)."
+	@echo "  OUT_DIR       Directory where all build artifacts are to be stored."
+	@echo "                  Defaults to ‘build/’                          "
+	@echo "  SRC_DIR       Directory containing .c, .y, and .l source files."
+	@echo "                  Defaults to ‘src/’                            "
+	@echo "  INC_DIR       Directory containing header files. Defaults to ‘include/’."
+
 
 ## Generated parser and lexer
 
@@ -237,7 +273,7 @@ clean:
 	$(RMDIR) $(OUT_DIR)
 	$(RM) *.gcda *.profraw *.profdata
 
-.PHONY: all clean cov pgo release \
+.PHONY: all help clean cov pgo release \
 	run test run-stripped test-stripped run-release test-release
 
 -include $(DEPS)
