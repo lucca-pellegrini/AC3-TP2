@@ -148,3 +148,56 @@ instructions {
     # ...
 }
 ```
+
+## Building
+
+### Requirements
+
+- A **C23**-capable compiler (Clang 18+ or GCC 14+ recommended)
+- **GNU Bison** and **Flex** (for the `.tom` parser)
+- **Make** (for the traditional build)
+
+### Using Make
+
+```bash
+make all   # Build the simulator at ./build/tomasulo
+make test  # Build and run all tests in tests/
+make clean # Delete build
+```
+
+### Using Zig (Recommended)
+
+The project also includes a full **Zig** build system with hundreds of
+extensive unit tests (see [src/tests/](src/tests/)). We use
+**[mise-en-place](https://mise.jdx.dev/)** to manage the Zig version (0.16.0).
+After cloning the repository:
+
+```bash
+mise trust   # Trust the .config/mise/config.toml file
+mise install # Install Zig and other tools
+mise build   # Build the simulator
+mise test    # Run the full Zig test suite
+```
+
+To run the program directly:
+
+```bash
+mise exec -- zig build run # Default arguments, read from stdin
+mise exec -- zig build run -- -b tests/reduction.tom # With custom arguments
+```
+
+### Using Docker & Podman
+
+The project includes a multi-stage `Dockerfile` and `docker-compose.yml` for
+easy execution anywhere Docker or Podman is available.
+
+```bash
+# Build and run a specific test
+docker compose run --rm tomasulo -b tests/dot_product.tom
+
+# Run in interactive mode
+docker compose run --rm tomasulo tests/wide_issue.tom
+
+# Enter the development environment (with all tools)
+docker compose run --rm tomasulo-dev
+```
