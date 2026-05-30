@@ -11,7 +11,18 @@ run = "zig build"
 [tasks.test]
 description = "Run unit tests"
 run = "zig build test"
+depends = ["build"]
+
+[tasks.cov]
+description = "Run unit tests with code coverage"
+run = "zig build cov"
+depends = ["build"]
 
 [tasks.run]
 description = "Run the simulator with a test input"
 run = "zig build run"
+depends = ["build"]
+
+[tasks.clean]
+description = "Clean up build"
+run = "zig build clean"
