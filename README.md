@@ -160,9 +160,12 @@ instructions {
 ### Using Make
 
 ```bash
-make all   # Build the simulator at ./build/tomasulo
-make test  # Build and run all tests in tests/
-make clean # Delete build
+make all     # Build the simulator at ./build/tomasulo
+make test    # Build the simulator and run all tests in tests/
+make release # Build release binary at ./build/tomasulo-release (requires upx)
+make clean   # Clean up build
+make cov     # Run tests with code coverage reporting (requires kcov)
+make help    # View all possible build targets
 ```
 
 ### Using Zig (Recommended)
@@ -177,6 +180,9 @@ mise trust   # Trust the .config/mise/config.toml file
 mise install # Install Zig and other tools
 mise build   # Build the simulator
 mise test    # Run the full Zig test suite
+mise clean   # Clean up build
+mise cov     # Run tests with code coverage reporting (requires kcov)
+mise run     # Select task interactively
 ```
 
 To run the program directly:
