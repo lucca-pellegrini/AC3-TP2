@@ -16,6 +16,7 @@ OUT_DIR := build
 OBJ_DIR := $(OUT_DIR)/obj
 DEP_DIR := $(OUT_DIR)/dep
 GEN_DIR := $(OUT_DIR)/gen
+COV_DIR := $(OUT_DIR)/coverage
 
 
 ## Tools configuration
@@ -40,9 +41,13 @@ ifneq ($(findstring clang,$(CC_VERSION)),)
 endif
 
 # Debug mode
-ifdef DEBUG
-    CFLAGS += -g -DDEBUG --debug -O0
-    GEN_CFLAGS += -g -DDEBUG --debug -O0
+ifndef NODEBUG
+    CFLAGS += -g -DDEBUG --debug
+    GEN_CFLAGS += -g -DDEBUG --debug
+endif
+ifndef NOOPTIMIZE
+    CFLAGS += -O0
+    GEN_CFLAGS += -O0
 endif
 
 # Hand-written sources
@@ -129,7 +134,7 @@ $(GEN_O): $(OBJ_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_H) | $(GEN_DIR) $(DEP_DIR)
 		$(DEPFLAGS) -MF $(DEP_DIR)/$*.d -MT $@ -c $< -o $@
 
 # How to create directories directories
-$(OUT_DIR) $(OBJ_DIR) $(DEP_DIR) $(GEN_DIR):
+$(OUT_DIR) $(OBJ_DIR) $(DEP_DIR) $(GEN_DIR) $(COV_DIR):
 	$(MKDIR) $@
 
 # How to link the final executable
@@ -213,13 +218,26 @@ test: $(BIN)
 $(COMPILE_COMMANDS_JSON): Makefile | $(OUT_DIR)
 	compiledb -nfo $@ make CC=clang
 
+# Run code coverage tests
+cov: $(BIN) | $(COV_DIR)
+	@echo Running kcov...
+	@i=0; \
+	for f in tests/*.tom; do \
+		i=$$((i+1)); \
+		kcov --include-path=$(CURDIR) \
+			$(COV_DIR)/run$$i \
+			$(BIN) "$$f" -qo/dev/null || exit 1; \
+	done
+
+	kcov --merge $(COV_DIR) $(COV_DIR)/run*
+
 # Remove all artifacts
 clean:
 	$(RM) $(BIN) $(BIN)-stripped $(BIN)-release
 	$(RMDIR) $(OUT_DIR)
 	$(RM) *.gcda *.profraw *.profdata
 
-.PHONY: all clean pgo release \
+.PHONY: all clean cov pgo release \
 	run test run-stripped test-stripped run-release test-release
 
 -include $(DEPS)
