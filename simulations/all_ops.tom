@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
-# All operations test: one of each instruction type.
+# All operations simulation: one of each instruction type.
 #
-# A simple test that exercises every supported operation exactly once,
-# all independent of each other (no RAW hazards). This is useful for
-# verifying basic functionality of all unit types.
+# A simple simulation that exercises every supported operation exactly once,
+# all independent of each other (no RAW hazards). This is useful for verifying
+# basic functionality of all unit types.
 #
 # Expected:
 #   F10 = 8 + 100 = 108   (L.D)

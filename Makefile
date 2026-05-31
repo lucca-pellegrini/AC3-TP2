@@ -107,11 +107,12 @@ help:
 	@echo "  clean         Clean up all build artifacts and delete the <OUT_DIR> dir."
 	@echo "  release       Compile the release build at ‘<OUT_DIR>/tomasulo-release’."
 	@echo "                  Requires the ‘upx’ command to be available."
-	@echo "  test          Run the simulator against all tests in the ‘tests/’ dir."
-	@echo "  cov           Run code coverage tests using all tests in the ‘tests/’"
+	@echo "  test          Run the simulator against all simulations in the ‘simulations/’"
+	@echo "                  directory."
+	@echo "  cov           Run code coverage tests using all simulations in the ‘simulations/’"
 	@echo "                  directory. Requires the ‘kcov’ command to be available."
 	@echo "  pgo           Build the simulator using profile-guided optimization by"
-	@echo "                  running the simulator against all tests in ‘tests/’."
+	@echo "                  running the simulator against all simulations in ‘simulations/’."
 	@echo "                  Cannot be used with static libc (which is the default)"
 	@echo "  run           Run the simulator (input is read from stdin)."
 	@echo
@@ -192,14 +193,14 @@ $(BIN)-stripped: $(BIN)
 $(BIN)-release: $(BIN)-stripped
 	upx -qqo $@ -9 $<
 
-# Profile-Guided Optimization (runs all tests)
+# Profile-Guided Optimization (runs all simulations)
 pgo: clean
 	@echo "=== Generating PGO profile ==="
 	$(MAKE) all CFLAGS="$(CFLAGS) -fprofile-generate" LDFLAGS="$(LDFLAGS) -fprofile-generate"
-	@echo "=== Running tests for profile data ==="
-	@for test in tests/*.tom; do \
-		echo "  Running $$test"; \
-		$(BIN) $$test -q; \
+	@echo "=== Running simulations for profile data ==="
+	@for simulation in simulations/*.tom; do \
+		echo "  Running $$simulation"; \
+		$(BIN) $$simulation -q; \
 	done
 	@echo "=== Rebuilding with profile data ==="
 	$(MAKE) all CFLAGS="$(CFLAGS) -fprofile-use" LDFLAGS="$(LDFLAGS) -fprofile-use"
@@ -218,8 +219,8 @@ run-release: $(BIN)-release
 
 # Test each executable
 test-stripped: $(BIN)-stripped
-	@echo "=== Running all tests ==="
-	@for f in tests/*.tom; do \
+	@echo "=== Running all simulations ==="
+	@for f in simulations/*.tom; do \
 		cols=$$(tput cols 2>/dev/null || echo 120); \
 		[ $$cols -gt 120 ] && cols=120; \
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
@@ -227,10 +228,10 @@ test-stripped: $(BIN)-stripped
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
 		$< "$$f" -q || exit 1; \
 	done
-	@echo "All tests passed."
+	@echo "All simulations passed."
 test-release: $(BIN)-release
-	@echo "=== Running all tests ==="
-	@for f in tests/*.tom; do \
+	@echo "=== Running all simulations ==="
+	@for f in simulations/*.tom; do \
 		cols=$$(tput cols 2>/dev/null || echo 120); \
 		[ $$cols -gt 120 ] && cols=120; \
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
@@ -238,10 +239,10 @@ test-release: $(BIN)-release
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
 		$< "$$f" -q || exit 1; \
 	done
-	@echo "All tests passed."
+	@echo "All simulations passed."
 test: $(BIN)
-	@echo "=== Running all tests ==="
-	@for f in tests/*.tom; do \
+	@echo "=== Running all simulations ==="
+	@for f in simulations/*.tom; do \
 		cols=$$(tput cols 2>/dev/null || echo 120); \
 		[ $$cols -gt 120 ] && cols=120; \
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
@@ -249,7 +250,7 @@ test: $(BIN)
 		printf '\033[1;35m%*s\033[0m\n' $$cols '' | tr ' ' '='; \
 		$< "$$f" -q || exit 1; \
 	done
-	@echo "All tests passed."
+	@echo "All simulations passed."
 
 # Create compile_commands.json for clangd
 $(COMPILE_COMMANDS_JSON): Makefile | $(OUT_DIR)
@@ -259,7 +260,7 @@ $(COMPILE_COMMANDS_JSON): Makefile | $(OUT_DIR)
 cov: $(BIN) | $(COV_DIR)
 	@echo Running kcov...
 	@i=0; \
-	for f in tests/*.tom; do \
+	for f in simulations/*.tom; do \
 		i=$$((i+1)); \
 		kcov --include-path=$(CURDIR) \
 			$(COV_DIR)/run$$i \

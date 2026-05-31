@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
 # Maximum issue width stress test.
 #
-# This test creates a large number of completely independent operations
-# to stress the issue logic and reservation station allocation. With
-# enough functional units, many of these can execute simultaneously.
+# This simulation creates a large number of completely independent operations
+# to stress the issue logic and reservation station allocation. With enough
+# functional units, many of these can execute simultaneously.
 #
 # 6 independent loads + 4 independent muls + 4 independent adds = 14 ops
 # All can potentially issue on consecutive cycles and many can execute

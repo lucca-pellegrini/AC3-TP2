@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
-# Minimal test: single instruction with immediate operands.
+# Minimal simulation: single instruction with immediate operands.
 #
 # The absolute simplest test case - one ADD with two ready operands.
 # No hazards, no dependencies, no contention. Just verify the basics work.

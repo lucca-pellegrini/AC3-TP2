@@ -4,18 +4,18 @@
     NOTE: Explanation file written with help from LLMs.
 -->
 
-# Test Suite Documentation
+# Simulations Documentation
 
-This directory contains test files (`.tom` files) that validate various aspects
-of the Tomasulo's Algorithm simulator implementation. Each test is designed to
-stress specific features, hazards, or performance characteristics of the
-simulator.
+This directory contains Tomasulo simulation files (`.tom` files) that validate
+various aspects of the Tomasulo's Algorithm simulator implementation. Each
+simulation is designed to stress specific features, hazards, or performance
+characteristics of the simulator.
 
-## Test Structure
+## Simulation Structure
 
-Each `.tom` test file follows the configuration format described in the main
-[README](../README.md#configuration-format--tom-files-). A typical file looks
-like this:
+Each `.tom` simulation file follows the configuration format described in the
+main [README](../README.md#configuration-format--tom-files-). A typical file
+looks like this:
 
 <!-- Obviously the files here aren't TOML, but I just think plain colorless text sucks here -->
 ```toml
@@ -48,34 +48,34 @@ Conceptually:
 | `registers`    | Initial values for architectural and integer regs   |
 | `instructions` | Program instructions in order of execution          |
 
-Tests are organized to progressively demonstrate more complex behaviors of the
-Tomasulo algorithm, from basic functionality to intricate hazard handling and
-resource contention scenarios.
+Simulations are organized to progressively demonstrate more complex behaviors
+of the Tomasulo algorithm, from basic functionality to intricate hazard
+handling and resource contention scenarios.
 
 ## Conventions
 
-Many tests use a simple memory model where loads return `base + offset`.
+Many simulations use a simple memory model where loads return `base + offset`.
 For example, with `R1 = 100`, a load `L.D F0 8(R1)` yields
-\(F_0 = 8 + 100 = 108\). When relevant, the test descriptions below refer
+\(F_0 = 8 + 100 = 108\). When relevant, the simulation descriptions below refer
 to this model.
 
 The simulator uses a unified register file: integer and floating-point
 registers share indices, so `R2` and `F2` refer to the same architected
-location. Tests that rely on this (for example, when using distant base
+location. Simulations that rely on this (for example, when using distant base
 registers like `R30`/`R31`) are noted explicitly.
 
-## Running Tests
+## Running Simulations
 
-Individual tests can be run using:
+Individual simulation can be run using:
 
 ```bash
-zig build run -- tests/<test_name>.tom
+zig build run -- simulations/<simulation_name>.tom
 ```
 
 To run in batch mode (no interactive stepping):
 
 ```bash
-zig build run -- -b tests/<test_name>.tom
+zig build run -- -b simulations/<simulation_name>.tom
 ```
 
 Other useful flags are documented in the simulator help:
@@ -147,7 +147,7 @@ DIV.D F12 F11 F23
 ```
 
 Starting from \(F_0 = 2\) and the constants defined in `deep_chain.tom`,
-the final result is \(F_{12} = 4\). The test highlights how operation
+the final result is \(F_{12} = 4\). The simulation highlights how operation
 latencies and limited functional units impact throughput in a strictly
 serial chain.
 
@@ -179,7 +179,7 @@ divisions are still in flight; the final adds \(F_{16}\) and
 Computes the dot product of two 4-element vectors to demonstrate parallel
 execution capabilities and tree-style reduction.
 
-Mathematically, the test evaluates
+Mathematically, the simulation evaluates
 \(\mathbf{A} \cdot \mathbf{B} = \sum_{i=0}^{3} A[i] \times B[i]\) with
 \(\mathbf{A} = [2,3,4,5]\) in \(F_0..F_3\) and
 \(\mathbf{B} = [1,2,3,4]\) in \(F_4..F_7\).
@@ -220,7 +220,7 @@ ADD.D F6 F4 F5
 ADD.D F7 F5 F6
 ```
 
-Starting from \(F_0 = F_1 = 1\), the test yields
+Starting from \(F_0 = F_1 = 1\), the simulation yields
 \(F_2..F_7 = 2,3,5,8,13,21\) in program order.
 
 ### [hennessy.tom](hennessy.tom)
@@ -240,8 +240,8 @@ DIV.D F10 F0 F6
 ADD.D F6  F8 F2
 ```
 
-The test exercises load buffers, long-latency division, and an overwrite of
-\(F_6\) by the final add while preserving correct commit order.
+The simulation exercises load buffers, long-latency division, and an overwrite
+of \(F_6\) by the final add while preserving correct commit order.
 
 ### [horner.tom](horner.tom)
 
@@ -353,20 +353,18 @@ ADD.D F9  F6 F7
 ADD.D F10 F9 F8
 ```
 
-Using the standard load model, this corresponds to
-\(C[i,j] = 1\times4 + 2\times5 + 3\times6 = 32\) scaled by the chosen
-base values. The test focuses on load–multiply–add patterns and reuse of
-loaded values.
+Using the standard load model, this corresponds to \(C[i,j] = 1\times4 +
+2\times5 + 3\times6 = 32\) scaled by the chosen base values. The simulation
+focuses on load–multiply–add patterns and reuse of loaded values.
 
 ### [mixed_stress.tom](mixed_stress.tom)
 
-Performs a mixed-workload stress test exercising every functional unit
-type. It loads four values, performs independent multiplies and adds, a
-divide, a subtract, and finally stores results back to memory. The test
-mixes independent loads (parallel on the load buffers), RAW dependencies
-across unit types (LD → MUL → ADD), a long-latency DIV running in
-parallel with shorter operations, a WAW on \(F_{20}\), and stores that
-must wait on their producers.
+Performs a mixed-workload stress test exercising every functional unit type. It
+loads four values, performs independent multiplies and adds, a divide, a
+subtract, and finally stores results back to memory. The simulation mixes
+independent loads (parallel on the load buffers), RAW dependencies across unit
+types (LD → MUL → ADD), a long-latency DIV running in parallel with shorter
+operations, a WAW on \(F_{20}\), and stores that must wait on their producers.
 
 Program:
 
@@ -435,7 +433,7 @@ Computes one root of the quadratic formula
 
 using a precomputed square root to focus on the dependency structure.
 
-For \(a = 1, b = 5, c = 6\) (roots at \(x = -2, x = -3\)), the test
+For \(a = 1, b = 5, c = 6\) (roots at \(x = -2, x = -3\)), the simulation
 computes the root \(x = -2\).
 
 Program:
@@ -618,7 +616,7 @@ value.
 
 ### [wide_issue.tom](wide_issue.tom)
 
-Performs a wide-issue, high-parallelism stress test with many independent
+Performs a wide-issue, high-parallelism stress simulation with many independent
 operations. It saturates the available reservation stations and functional
 units to exercise the issue logic, scheduling, and CDB contention behavior.
 

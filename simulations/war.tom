@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
 # Write-After-Read (WAR) hazard demonstration.
 #

@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
 # Store and load patterns testing memory ordering.
 #
-# This test exercises store buffers and load buffers with a mix of
+# This simulation exercises store buffers and load buffers with a mix of
 # independent and dependent memory operations:
 #
 # 1. Multiple loads to different addresses (can run in parallel)

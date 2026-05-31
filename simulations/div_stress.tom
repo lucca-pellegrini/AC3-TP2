@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
 # Division-heavy stress test.
 #
-# Division is typically the longest-latency FP operation. This test
-# queues up multiple divisions to stress the divider and exercise
-# CDB contention when they complete close together.
+# Division is typically the longest-latency FP operation. This simulation
+# queues up multiple divisions to stress the divider and exercise CDB
+# contention when they complete close together.
 #
 # We also mix in some fast operations that can complete while the
 # divisions are in flight, showing how shorter-latency operations

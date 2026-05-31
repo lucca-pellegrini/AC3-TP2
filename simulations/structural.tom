@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
 # SPDX-FileCopyrightText: Copyright © 2026 Paulo Dimas Junior <paulo.junior.1478361@sga.pucminas.br>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
-# Structural hazard test: more ADD instructions than Add RS.
+# Structural hazard simulation: more ADD instructions than Add RS.
 # With only 1 Add RS, 3rd ADD must stall until the first frees up.
 
 cycles {

@@ -14,7 +14,7 @@ services:
     init: true
     entrypoint: ["/usr/local/bin/tomasulo"]
     volumes:
-      - ./tests:/app/tests:ro
+      - ./simulations:/app/simulations:ro
 
   # Development environment with all build tools
   tomasulo-dev:

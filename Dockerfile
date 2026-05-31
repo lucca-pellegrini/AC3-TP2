@@ -55,8 +55,8 @@ COPY . /app/
 # Build with Makefile
 RUN make clean && make all CC=musl-clang
 
-# Run Makefile tests
-RUN if [ -d tests ]; then make test; fi
+# Run Makefile simulations
+RUN if [ -d simulations ]; then make test; fi
 
 # Stage 4: Runtime (minimal image with just the binary)
 FROM alpine:latest AS runtime
@@ -64,8 +64,8 @@ FROM alpine:latest AS runtime
 # Copy the built binary from Zig build
 COPY --from=zig-build /app/zig-out/bin/tomasulo /usr/local/bin/tomasulo
 
-# Add test files for runtime testing if needed
-COPY --from=zig-build /app/tests /app/tests
+# Add simulation files for runtime testing if needed
+COPY --from=zig-build /app/simulations /app/simulations
 
 WORKDIR /app
 

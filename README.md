@@ -24,7 +24,7 @@ renaming, a reorder buffer, a common data bus, structural hazards, and data
 hazards. The simulator itself, as well as the program's entry point and
 visualization logic, are written entirely in
 [C23](https://en.cppreference.com/c/23); the parser for its [custom
-configuration format](tests/) is written with the
+configuration format](simulations/) is written with the
 [Flex](https://github.com/westes/flex) lexer generator and the [GNU
 Bison](https://www.gnu.org/software/bison/) parser generator; and a number of
 *(optional)* unit tests are written in [Zig
@@ -84,7 +84,7 @@ workloads stress a particular Tomasulo configuration.
 ### Configuration Format (`.tom` files)
 
 The simulator uses a custom configuration format with the `.tom` extension.
-Each test file is divided into four main sections:
+Each simulation file is divided into four main sections:
 
 - **`cycles`**: Defines the execution latency (in cycles) for each operation type.
 - **`units`**: Configures the number of reservation stations or functional units available per operation type.
@@ -115,7 +115,7 @@ There are a total of 32 floating-point registers, `F0`–`F31`. The integer
 registers, `R0`–`R31`, are just syntatic sugar: the register file only stores
 32 values, and only floating-point ones.
 
-#### Example (from [`tests/wide_issue.tom`](tests/wide_issue.tom))
+#### Example (from [`simulations/wide_issue.tom`](simulations/wide_issue.tom))
 
 ```tom
 cycles {
@@ -161,10 +161,10 @@ instructions {
 
 ```bash
 make all     # Build the simulator at ./build/tomasulo
-make test    # Build the simulator and run all tests in tests/
+make test    # Build the simulator and run all simulations in simulations/
 make release # Build release binary at ./build/tomasulo-release (requires upx)
 make clean   # Clean up build
-make cov     # Run tests with code coverage reporting (requires kcov)
+make cov     # Run simulations with code coverage reporting (requires kcov)
 make help    # View all possible build targets
 ```
 
@@ -181,7 +181,7 @@ mise install # Install Zig and other tools
 mise build   # Build the simulator
 mise test    # Run the full Zig test suite
 mise clean   # Clean up build
-mise cov     # Run tests with code coverage reporting (requires kcov)
+mise cov     # Run unit tests with code coverage reporting (requires kcov)
 mise run     # Select task interactively
 ```
 
@@ -189,7 +189,7 @@ To run the program directly:
 
 ```bash
 mise exec -- zig build run # Default arguments, read from stdin
-mise exec -- zig build run -- -b tests/reduction.tom # With custom arguments
+mise exec -- zig build run -- -b simulations/reduction.tom # With custom arguments
 ```
 
 ### Using Docker & Podman
@@ -199,10 +199,10 @@ easy execution anywhere Docker or Podman is available.
 
 ```bash
 # Build and run a specific test
-docker compose run --rm tomasulo -b tests/dot_product.tom
+docker compose run --rm tomasulo -b simulations/dot_product.tom
 
 # Run in interactive mode
-docker compose run --rm tomasulo tests/wide_issue.tom
+docker compose run --rm tomasulo simulations/wide_issue.tom
 
 # Enter the development environment (with all tools)
 docker compose run --rm tomasulo-dev

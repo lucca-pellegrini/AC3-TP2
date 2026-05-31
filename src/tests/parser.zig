@@ -46,7 +46,7 @@ test "parser: parse_register invalid inputs" {
 test "parser: parse_input loads basic test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/basic.tom", &cfg, &sim);
+    const result = c.parse_input("simulations/basic.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 3), sim.num_instructions);
     // Check config was parsed
@@ -66,7 +66,7 @@ test "parser: parse_input loads basic test file" {
 test "parser: parse_input loads chain test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/chain.tom", &cfg, &sim);
+    const result = c.parse_input("simulations/chain.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 4), sim.num_instructions);
     _ = runToCompletion(&sim);
@@ -80,7 +80,7 @@ test "parser: parse_input loads chain test file" {
 test "parser: parse_input loads parallel test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/parallel.tom", &cfg, &sim);
+    const result = c.parse_input("simulations/parallel.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 4), sim.num_instructions);
     _ = runToCompletion(&sim);
@@ -94,7 +94,7 @@ test "parser: parse_input loads parallel test file" {
 test "parser: parse_input loads Hennessy test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/hennessy.tom", &cfg, &sim);
+    const result = c.parse_input("simulations/hennessy.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 6), sim.num_instructions);
     _ = runToCompletion(&sim);
@@ -106,7 +106,7 @@ test "parser: parse_input loads Hennessy test file" {
 test "parser: parse_input loads structural hazard test file" {
     var cfg: c.TomasuloConfig = undefined;
     var sim: c.Simulator = undefined;
-    const result = c.parse_input("tests/structural.tom", &cfg, &sim);
+    const result = c.parse_input("simulations/structural.tom", &cfg, &sim);
     try testing.expectEqual(@as(c_int, 0), result);
     try testing.expectEqual(@as(c_int, 3), sim.num_instructions);
     _ = runToCompletion(&sim);

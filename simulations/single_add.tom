@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: ISC
 # SPDX-FileCopyrightText: Copyright © 2026 Lucca M. A. Pellegrini <lucca@verticordia.com>
-# NOTE: This test file was written with help from LLMs
+# NOTE: This simulation file was written with help from LLMs
 
-# Absolute minimal test: single ADD instruction.
+# Absolute minimal simulation: single ADD instruction.
 #
 # Even simpler than minimal.tom - this is the most basic
 # possible program that still does something meaningful.
