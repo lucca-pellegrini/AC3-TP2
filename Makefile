@@ -45,7 +45,7 @@ ifndef NODEBUG
     CFLAGS += -g -DDEBUG --debug
     GEN_CFLAGS += -g -DDEBUG --debug
 endif
-ifndef NOOPTIMIZE
+ifdef NOOPTIMIZE
     CFLAGS += -O0
     GEN_CFLAGS += -O0
 endif
