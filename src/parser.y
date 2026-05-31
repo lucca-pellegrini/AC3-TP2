@@ -241,7 +241,7 @@ instruction
         {
             if ($1 != OP_LD && $1 != OP_SD) {
                 tom_parse_error(ctx, @1,
-                    "opcode '%s' doesn't take an immediate offset",
+                    "opcode '%s' doesn't take an immediate (numeric value)",
                     opcode_name($1));
                 YYERROR;
             }

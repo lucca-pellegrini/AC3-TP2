@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 // ── Generated scanner control functions ────────────────────────────────────
 //
@@ -29,14 +30,91 @@ void tom_yyset_extra(void *user_defined, yyscan_t scanner);
 
 // ── Error reporting ────────────────────────────────────────────────────────
 
-void tom_parse_error_at(ParseContext *ctx, int line, const char *fmt, ...)
+// Simple ANSI helpers.  We keep this local so the rest of the codebase
+// doesn't grow a hard dependency on coloured output.
+#define ANSI_RED "\x1b[31m"
+#define ANSI_BOLD "\x1b[1m"
+#define ANSI_RESET "\x1b[0m"
+#define ANSI_DIM "\x1b[2m"
+#define ANSI_BOLDWHITE "\x1b[1m\x1b[37m"
+
+// Maximum line length we will try to show in an error snippet.  Input files
+// for this tool are expected to be small, so a fixed buffer is fine.
+#define TOM_MAX_LINE_SNIPPET 512
+
+static void print_error_snippet(ParseContext *ctx, const struct TOM_YYLTYPE *loc,
+				const char *primary_msg)
+{
+	if (!ctx || !ctx->filename || !loc)
+		return;
+
+	// We highlight the primary line, but also try to print a small amount
+	// of surrounding context to give the user some orientation.
+	int line = loc->first_line > 0 ? loc->first_line : 1;
+	FILE *f = fopen(ctx->filename, "r");
+	if (!f)
+		return;
+
+	char buf[TOM_MAX_LINE_SNIPPET];
+	int current = 1;
+	int first_ctx = line - 2;
+	if (first_ctx < 1)
+		first_ctx = 1;
+
+	// Walk to the first context line.
+	while (current < first_ctx && fgets(buf, sizeof(buf), f))
+		current++;
+
+	int last_ctx = line + 2;
+	for (; current <= last_ctx && fgets(buf, sizeof(buf), f); current++) {
+		int this_line = current;
+		// Strip trailing newlines so our caret line lines up.
+		size_t len = strlen(buf);
+		while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+			buf[--len] = '\0';
+
+		// Line number + separator in a dim style.
+		fprintf(stderr, "%s%4d |%s ", ANSI_DIM, this_line, ANSI_RESET);
+		if (this_line == line) {
+			// Highlight the offending source line in bold.
+			fprintf(stderr, "%s%s%s\n", ANSI_BOLD, buf, ANSI_RESET);
+			int start_col = loc->first_column > 0 ? loc->first_column : 1;
+			fprintf(stderr, "%s     |%s ", ANSI_DIM, ANSI_RESET);
+			for (int i = 1; i < start_col; i++)
+				fputc(' ', stderr);
+			fprintf(stderr, "%s^%s ", ANSI_RED, ANSI_RESET);
+			if (primary_msg)
+				fprintf(stderr, "%s%serror:%s %s", ANSI_BOLD, ANSI_RED, ANSI_RESET,
+					primary_msg);
+			fputc('\n', stderr);
+		} else {
+			// Non-primary context lines: normal text after dim line number.
+			fprintf(stderr, "%s\n", buf);
+		}
+	}
+	fclose(f);
+}
+
+void tom_parse_error_at(ParseContext *ctx, const struct TOM_YYLTYPE *loc, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	fprintf(stderr, "%s:%d: error: ", ctx->filename, line);
-	vfprintf(stderr, fmt, ap);
-	fputc('\n', stderr);
+	int line = loc ? loc->first_line : 0;
+	if (line <= 0)
+		line = 1;
+
+	// Render message once into a buffer so we can reuse it
+	// both in the filename:line header and inline with the caret.
+	char msg_buf[256];
+	vsnprintf(msg_buf, sizeof(msg_buf), fmt, ap);
 	va_end(ap);
+
+	// Primary error line, coloured similar to GCC-style diagnostics.
+	fprintf(stderr, "%s:%d: %serror:%s %s%s%s\n", ctx->filename, line, ANSI_BOLD ANSI_RED,
+		ANSI_RESET, ANSI_BOLDWHITE, msg_buf, ANSI_RESET);
+
+	print_error_snippet(ctx, loc, msg_buf);
+
 	ctx->errors++;
 }
 

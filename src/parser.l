@@ -48,11 +48,17 @@
 #define YYSTYPE TOM_YYSTYPE
 #define YYLTYPE TOM_YYLTYPE
 
-#define YY_USER_ACTION                              \
-    do {                                            \
-        yylloc->first_line   = yylineno;            \
-        yylloc->last_line    = yylineno;            \
-    } while (0);
+// Track line/column information for nicer error messages.  Flex's
+// yylineno option keeps the current line; the generated scanner also
+// provides a yycolumn lvalue we can use to track the current column.
+#define YY_USER_ACTION                                              \
+	do {                                                            \
+		/* yylineno/yycolumn are 1-based. */                      \
+		yylloc->first_line = yylloc->last_line = yylineno;        \
+		yylloc->first_column = yycolumn;                          \
+		yylloc->last_column  = yycolumn + (int)yyleng - 1;        \
+		yycolumn += (int)yyleng;                                  \
+	} while (0);
 
 /* Normalise an identifier in place: uppercase, drop '.' and '_'.
  * Used to recognise block keywords (cycles, units, ...) in a way
@@ -79,7 +85,7 @@ ID         [A-Za-z_][A-Za-z0-9_.]*
 %%
 
 [ \t\r]+              { /* skip horizontal whitespace */ }
-\n                    { /* skip newlines (yylineno updated automatically) */ }
+\n                    { /* reset column at start of line */ yycolumn = 1; }
 #[^\n]*               { /* skip '#' comments to end of line */ }
 "//"[^\n]*            { /* skip '//' comments to end of line */ }
 ","                   { /* commas are pure separators */ }
