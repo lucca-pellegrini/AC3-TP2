@@ -41,7 +41,7 @@ FROM build-base AS zig-build
 COPY . /app/
 
 # Install tools via mise and build with Zig
-RUN mise exec -- zig build -Dtarget=x86_64-linux-musl -Doptimize=ReleaseFast
+RUN mise exec -- zig build -Dtarget=x86_64-linux-musl
 
 # Run tests with Zig via mise
 RUN mise exec -- zig build test
