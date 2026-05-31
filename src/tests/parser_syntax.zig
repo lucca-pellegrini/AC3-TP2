@@ -35,11 +35,10 @@ test "parser_syntax: minimal program (only instructions block)" {
     try testing.expectEqual(@as(c_int, 3), p.sim.instructions[0].src2);
 }
 
-test "parser_syntax: empty instructions block parses" {
-    const src = "instructions {}";
-    const p = try parseSource(src);
-    defer freeParse(p);
-    try testing.expectEqual(@as(c_int, 0), p.sim.num_instructions);
+test "parser_syntax: empty instructions block rejected" {
+    try parseExpectFail(
+        \\instructions {}
+    );
 }
 
 test "parser_syntax: empty file is accepted (defaults apply)" {

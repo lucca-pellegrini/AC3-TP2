@@ -208,9 +208,24 @@ number
 
 instructions_block
     : INSTRUCTIONS LBRACE
-        { ensure_sim_ready(ctx); }
+        {
+            ensure_sim_ready(ctx);
+        }
       instructions
       RBRACE
+        {
+            /* Reject an instructions block that ended up empty.  We don't
+             * rely on num_instructions here, because sim_add_instruction()
+             * is responsible for keeping that in sync; instead we track
+             * whether we ever saw an instruction in this block using the
+             * sim_ready flag and a local location copy. */
+            TOM_YYLTYPE loc = @1;
+            if (ctx->sim->num_instructions == 0) {
+                tom_parse_error(ctx, loc,
+                    "at least one instruction is required in this block");
+                YYERROR;
+            }
+        }
     ;
 
 instructions
