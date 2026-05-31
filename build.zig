@@ -152,6 +152,7 @@ pub fn build(b: *std.Build) void {
     });
 
     const run_tests = b.addRunArtifact(tests);
+    run_tests.setEnvironmentVariable("__TOMASULO_PARSER_SHUT_UP", "1"); // Silence parser warnings
     run_tests.stdio = .inherit; // Ensure output reaches user.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_tests.step);
@@ -171,6 +172,7 @@ pub fn build(b: *std.Build) void {
 
     // Run kcov on the test binary, output to zig-out/coverage
     const kcov_run = b.addSystemCommand(&.{ "kcov", "--clean" });
+    kcov_run.setEnvironmentVariable("__TOMASULO_PARSER_SHUT_UP", "1"); // Silence parser warnings
     kcov_run.addPrefixedDirectoryArg("--include-path=", b.path("src"));
     kcov_run.addArg("zig-out/coverage");
     kcov_run.addArtifactArg(tests);

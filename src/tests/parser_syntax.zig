@@ -35,19 +35,17 @@ test "parser_syntax: minimal program (only instructions block)" {
     try testing.expectEqual(@as(c_int, 3), p.sim.instructions[0].src2);
 }
 
-test "parser_syntax: empty instructions block rejected" {
-    try parseExpectFail(
+test "parser_syntax: empty instructions block rejected at top level" {
+    // parseSource() is a thin wrapper over the C parser entry point, so an
+    // input with no instructions anywhere should fail with ParseFailed.
+    try testing.expectError(error.ParseFailed, parseSource(
         \\instructions {}
-    );
+    ));
 }
 
-test "parser_syntax: empty file is accepted (defaults apply)" {
-    const src = "";
-    const p = try parseSource(src);
-    defer freeParse(p);
-    // Defaults from config_default() should be in effect.
-    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
-    try testing.expectEqual(@as(c_int, 0), p.sim.num_instructions);
+test "parser_syntax: empty file rejected (must contain at least one instruction)" {
+    // An entirely empty file has no instructions and should also fail.
+    try testing.expectError(error.ParseFailed, parseSource(""));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -154,13 +152,45 @@ test "parser_syntax: block order is flexible (instructions first)" {
 
 test "parser_syntax: same block can appear twice (later wins)" {
     const src =
-        \\cycles { add.d = 2 }
+        \\cycles { add.d = 2; sub.d = 1 }
         \\cycles { add.d = 9 }
         \\instructions { ADDD F0 F0 F0 }
     ;
     const p = try parseSource(src);
     defer freeParse(p);
     try testing.expectEqual(@as(c_int, 9), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 1), p.cfg.latency[c.OP_SUBD]);
+}
+
+test "parser_syntax: duplicate blocks for all types override values and instructions merge" {
+    const src =
+        \\cycles { add.d = 1; sub.d = 1 }
+        \\cycles { add.d = 2 }
+        \\units { add.d = 1; mult.d = 1 }
+        \\units { add.d = 3 }
+        \\registers { F1 = 1.0, F2 = 2.0 }
+        \\registers { F1 = 5.0 }
+        \\instructions { ADDD F0 F1 F2 }
+        \\instructions { ADDD F0 F0 F0 }
+    ;
+    const p = try parseSource(src);
+    defer freeParse(p);
+    // cycles: later block overrides add.d only, sub.d stays from first block
+    try testing.expectEqual(@as(c_int, 2), p.cfg.latency[c.OP_ADDD]);
+    try testing.expectEqual(@as(c_int, 1), p.cfg.latency[c.OP_SUBD]);
+    // units: later block overrides add.d only
+    try testing.expectEqual(@as(c_int, 3), p.cfg.num_rs[c.RS_ADD]);
+    try testing.expectEqual(@as(c_int, 1), p.cfg.num_rs[c.RS_MULT]);
+    // registers: later block overrides F1 only
+    try testing.expectApproxEqAbs(5.0, p.sim.fp_regs[1], 0.001);
+    try testing.expectApproxEqAbs(2.0, p.sim.fp_regs[2], 0.001);
+    // instructions: blocks are merged; we should see both ADDD instructions
+    // in program order.
+    try testing.expectEqual(@as(c_int, 2), p.sim.num_instructions);
+    try testing.expectEqual(@as(c_uint, c.OP_ADDD), p.sim.instructions[0].op);
+    try testing.expectEqual(@as(c_int, 0), p.sim.instructions[0].dest);
+    try testing.expectEqual(@as(c_uint, c.OP_ADDD), p.sim.instructions[1].op);
+    try testing.expectEqual(@as(c_int, 0), p.sim.instructions[1].dest);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

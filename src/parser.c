@@ -37,6 +37,7 @@ void tom_yyset_extra(void *user_defined, yyscan_t scanner);
 #define ANSI_RESET "\x1b[0m"
 #define ANSI_DIM "\x1b[2m"
 #define ANSI_BOLDWHITE "\x1b[1m\x1b[37m"
+#define ANSI_YELLOW "\x1b[33m"
 
 // Maximum line length we will try to show in an error snippet.  Input files
 // for this tool are expected to be small, so a fixed buffer is fine.
@@ -45,7 +46,7 @@ void tom_yyset_extra(void *user_defined, yyscan_t scanner);
 static void print_error_snippet(ParseContext *ctx, const struct TOM_YYLTYPE *loc,
 				const char *primary_msg)
 {
-	if (!ctx || !ctx->filename || !loc)
+	if (!ctx || ctx->quiet || !ctx->filename || !loc)
 		return;
 
 	// We highlight the primary line, but also try to print a small amount
@@ -110,12 +111,81 @@ void tom_parse_error_at(ParseContext *ctx, const struct TOM_YYLTYPE *loc, const 
 	va_end(ap);
 
 	// Primary error line, coloured similar to GCC-style diagnostics.
-	fprintf(stderr, "%s:%d: %serror:%s %s%s%s\n", ctx->filename, line, ANSI_BOLD ANSI_RED,
-		ANSI_RESET, ANSI_BOLDWHITE, msg_buf, ANSI_RESET);
+	if (ctx && !ctx->quiet && ctx->filename && !loc)
+		fprintf(stderr, "%s:%d: %serror:%s %s%s%s\n", ctx->filename, line,
+			ANSI_BOLD ANSI_RED, ANSI_RESET, ANSI_BOLDWHITE, msg_buf, ANSI_RESET);
 
 	print_error_snippet(ctx, loc, msg_buf);
 
 	ctx->errors++;
+}
+
+static void print_warning_snippet(ParseContext *ctx, const struct TOM_YYLTYPE *loc,
+				  const char *primary_msg)
+{
+	if (!ctx || ctx->quiet || !ctx->filename || !loc)
+		return;
+
+	int line = loc->first_line > 0 ? loc->first_line : 1;
+	FILE *f = fopen(ctx->filename, "r");
+	if (!f)
+		return;
+
+	char buf[TOM_MAX_LINE_SNIPPET];
+	int current = 1;
+	int first_ctx = line - 2;
+	if (first_ctx < 1)
+		first_ctx = 1;
+
+	while (current < first_ctx && fgets(buf, sizeof(buf), f))
+		current++;
+
+	int last_ctx = line + 2;
+	for (; current <= last_ctx && fgets(buf, sizeof(buf), f); current++) {
+		int this_line = current;
+		size_t len = strlen(buf);
+		while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+			buf[--len] = '\0';
+
+		fprintf(stderr, "%s%4d |%s ", ANSI_DIM, this_line, ANSI_RESET);
+		if (this_line == line) {
+			fprintf(stderr, "%s%s%s\n", ANSI_BOLD, buf, ANSI_RESET);
+			int start_col = loc->first_column > 0 ? loc->first_column : 1;
+			fprintf(stderr, "%s     |%s ", ANSI_DIM, ANSI_RESET);
+			for (int i = 1; i < start_col; i++)
+				fputc(' ', stderr);
+			fprintf(stderr, "%s^%s ", ANSI_YELLOW, ANSI_RESET);
+			if (primary_msg)
+				fprintf(stderr, "%s%swarning:%s %s", ANSI_BOLD, ANSI_YELLOW,
+					ANSI_RESET, primary_msg);
+			fputc('\n', stderr);
+		} else {
+			fprintf(stderr, "%s\n", buf);
+		}
+	}
+	fclose(f);
+}
+
+void tom_parse_warning_at(ParseContext *ctx, const struct TOM_YYLTYPE *loc, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	int line = loc ? loc->first_line : 0;
+	if (line <= 0)
+		line = 1;
+
+	char msg_buf[256];
+	vsnprintf(msg_buf, sizeof(msg_buf), fmt, ap);
+	va_end(ap);
+
+	if (ctx && !ctx->quiet && ctx->filename && !loc)
+		fprintf(stderr, "%s:%d: %swarning:%s %s%s%s\n", ctx->filename, line,
+			ANSI_BOLD ANSI_YELLOW, ANSI_RESET, ANSI_BOLDWHITE, msg_buf, ANSI_RESET);
+
+	print_warning_snippet(ctx, loc, msg_buf);
+
+	if (ctx)
+		ctx->warnings++;
 }
 
 // ── Public helpers ─────────────────────────────────────────────────────────
@@ -138,6 +208,16 @@ int parse_register(const char *name)
 
 // ── Public entry point ─────────────────────────────────────────────────────
 
+// We keep the last warning count in a static so main() can ask whether the
+// most recent parse produced any diagnostics, in order to prompt the user in
+// interactive mode before clearing the screen.
+static int g_last_warning_count = 0;
+
+int parse_last_warning_count(void)
+{
+	return g_last_warning_count;
+}
+
 int parse_input(const char *path, TomasuloConfig *cfg, Simulator *sim)
 {
 	FILE *f = fopen(path, "r");
@@ -154,7 +234,17 @@ int parse_input(const char *path, TomasuloConfig *cfg, Simulator *sim)
 		.cfg = cfg,
 		.sim = sim,
 		.sim_ready = false,
+		.saw_cycles = false,
+		.saw_units = false,
+		.saw_registers = false,
+		.saw_instructions = false,
+		// Honor both the global quiet flag (used by the interactive
+		// CLI) and an environment variable to let test harnesses or
+		// callers suppress diagnostics without linking against
+		// parser symbols directly.
+		.quiet = (getenv("__TOMASULO_PARSER_SHUT_UP") != NULL),
 		.errors = 0,
+		.warnings = 0,
 	};
 
 	yyscan_t scanner;
@@ -184,7 +274,20 @@ int parse_input(const char *path, TomasuloConfig *cfg, Simulator *sim)
 	// Without this, the simulator would run with stale default values.
 	sim->cfg = *cfg;
 
+	// Expose warnings to callers.
+	g_last_warning_count = ctx.warnings;
+
 	if (rc != 0 || ctx.errors > 0)
 		return -1;
+
+	// At this point the parse succeeded.  It's legal for individual
+	// instructions blocks to be empty (we warn in the grammar), but the
+	// overall program must contain at least one instruction.
+	if (sim->num_instructions == 0) {
+		struct TOM_YYLTYPE loc = { .first_line = 1, .first_column = 1 };
+		tom_parse_error_at(&ctx, &loc, "no instructions found in input");
+		return -1;
+	}
+
 	return 0;
 }

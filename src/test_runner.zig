@@ -93,7 +93,7 @@ fn processResult(
     passed: *usize,
     failed: *usize,
     skipped: *usize,
-    c: type,
+    colors: type,
     parsed: ParsedName,
     index: usize,
     total: usize,
@@ -116,7 +116,7 @@ fn processResult(
     } else |err| switch (err) {
         error.SkipZigTest => {
             skipped.* += 1;
-            printTestLine(c, c.yellow, " SKIP ", parsed, index, total, duration);
+            printTestLine(colors, colors.yellow, " SKIP ", parsed, index, total, duration);
             return;
         },
         else => {
@@ -128,20 +128,20 @@ fn processResult(
 
     // Print the test line
     if (test_failed) {
-        printTestLine(c, c.red, "FAILED", parsed, index, total, duration);
+        printTestLine(colors, colors.red, "FAILED", parsed, index, total, duration);
     } else {
-        printTestLine(c, c.green, "  OK  ", parsed, index, total, duration);
+        printTestLine(colors, colors.green, "  OK  ", parsed, index, total, duration);
     }
 
     // Print error details below the line if failed
     if (test_failed) {
         if (error_msg) |err| {
-            std.debug.print("         {s}└─ {any}{s}\n", .{ c.red, err, c.reset });
+            std.debug.print("         {s}└─ {any}{s}\n", .{ colors.red, err, colors.reset });
         } else if (fail_reason.len > 0) {
-            std.debug.print("         {s}└─ {s}{s}\n", .{ c.red, fail_reason, c.reset });
+            std.debug.print("         {s}└─ {s}{s}\n", .{ colors.red, fail_reason, colors.reset });
         }
         if (has_leak) {
-            std.debug.print("         {s}└─ memory leak detected{s}\n", .{ c.yellow, c.reset });
+            std.debug.print("         {s}└─ memory leak detected{s}\n", .{ colors.yellow, colors.reset });
         }
     }
 }
@@ -225,11 +225,11 @@ pub fn main() void {
     var leaks: usize = 0;
 
     // Always use ANSI colors. Pipe through `sed 's/\x1b\[[0-9;]*m//g'` to strip.
-    const c = ansi;
+    const colors = ansi;
 
     std.debug.print(
         "{s}{s}Running {d} test{s}...{s}\n",
-        .{ c.bold, c.cyan, total, if (total == 1) "" else "s", c.reset },
+        .{ colors.bold, colors.cyan, total, if (total == 1) "" else "s", colors.reset },
     );
 
     for (builtin.test_functions, 0..) |test_fn, i| {
@@ -256,22 +256,22 @@ pub fn main() void {
         const end_ns: i128 = @as(i128, end_ts.sec) * 1_000_000_000 + end_ts.nsec;
         const elapsed_ns: u64 = @intCast(@max(0, end_ns - start_ns));
 
-        processResult(result, &passed, &failed, &skipped, c, parsed, i, total, elapsed_ns, has_leak);
+        processResult(result, &passed, &failed, &skipped, colors, parsed, i, total, elapsed_ns, has_leak);
     }
 
     std.debug.print("\n", .{});
-    const status_color = if (failed > 0 or leaks > 0) c.red else c.green;
+    const status_color = if (failed > 0 or leaks > 0) colors.red else colors.green;
     const status_word = if (failed > 0 or leaks > 0) "FAILED" else "PASSED";
     std.debug.print(
         "{s}{s}{s}: {s}{d} passed{s}",
-        .{ c.bold, status_color, status_word, c.green, passed, c.reset },
+        .{ colors.bold, status_color, status_word, colors.green, passed, colors.reset },
     );
     if (failed > 0)
-        std.debug.print(", {s}{d} failed{s}", .{ c.red, failed, c.reset });
+        std.debug.print(", {s}{d} failed{s}", .{ colors.red, failed, colors.reset });
     if (skipped > 0)
-        std.debug.print(", {s}{d} skipped{s}", .{ c.yellow, skipped, c.reset });
+        std.debug.print(", {s}{d} skipped{s}", .{ colors.yellow, skipped, colors.reset });
     if (leaks > 0)
-        std.debug.print(", {s}{d} leaked{s}", .{ c.yellow, leaks, c.reset });
+        std.debug.print(", {s}{d} leaked{s}", .{ colors.yellow, leaks, colors.reset });
     std.debug.print("\n", .{});
 
     if (failed > 0 or leaks > 0)

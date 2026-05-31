@@ -113,6 +113,7 @@ int main(int argc, char *argv[])
 	Simulator sim;
 	if (parse_input(input_path, &cfg, &sim) != 0)
 		return EXIT_FAILURE;
+	int warning_count = parse_last_warning_count();
 
 	// Store the input filename in the simulator
 	sim.input_filename = input_path;
@@ -137,6 +138,25 @@ int main(int argc, char *argv[])
 			fprintf(out, "  %-8s: %d units\n", rs_names[i], cfg.num_rs[i]);
 
 		fprintf(out, "\n");
+	}
+
+	// In interactive mode with stdout, give the user a chance to read and
+	// optionally react to any parser warnings before we start clearing the
+	// screen for cycle displays.
+	if (mode == DISPLAY_INTERACTIVE && out == stdout && warning_count > 0) {
+		fprintf(stderr, "Parser emitted %d warning%s. Ignore warning and continue [y/N]? ",
+			warning_count, warning_count == 1 ? "" : "s");
+		int ch = getchar();
+		if (ch != 'y' && ch != 'Y') {
+			// Consume rest of line to leave stdin in a clean state.
+			while (ch != '\n' && ch != EOF)
+				ch = getchar();
+			if (out != stdout)
+				fclose(out);
+			return EXIT_FAILURE;
+		}
+		while (ch != '\n' && ch != EOF)
+			ch = getchar();
 	}
 
 	// Maximum number of cycle permissible (arbitrary)

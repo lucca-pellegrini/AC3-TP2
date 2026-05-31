@@ -134,7 +134,16 @@ block
 /* ── cycles { OPCODE = INT, ... } ───────────────────────────────── */
 
 cycles_block
-    : CYCLES LBRACE cycles_items RBRACE
+    : CYCLES LBRACE
+        {
+            if (ctx->saw_cycles) {
+                TOM_YYLTYPE loc = @1;
+                tom_parse_warning(ctx, loc,
+                    "duplicate cycles block; later values override earlier ones");
+            }
+            ctx->saw_cycles = true;
+        }
+      cycles_items RBRACE
     ;
 
 cycles_items
@@ -157,7 +166,16 @@ cycles_item
 /* ── units { OPCODE = INT, ... } ────────────────────────────────── */
 
 units_block
-    : UNITS LBRACE units_items RBRACE
+    : UNITS LBRACE
+        {
+            if (ctx->saw_units) {
+                TOM_YYLTYPE loc = @1;
+                tom_parse_warning(ctx, loc,
+                    "duplicate units block; later values override earlier ones");
+            }
+            ctx->saw_units = true;
+        }
+      units_items RBRACE
     ;
 
 units_items
@@ -182,7 +200,15 @@ units_item
 
 registers_block
     : REGISTERS LBRACE
-        { ensure_sim_ready(ctx); }
+        {
+            if (ctx->saw_registers) {
+                TOM_YYLTYPE loc = @1;
+                tom_parse_warning(ctx, loc,
+                    "duplicate registers block; later values override earlier ones");
+            }
+            ctx->saw_registers = true;
+            ensure_sim_ready(ctx);
+        }
       register_items
       RBRACE
     ;
@@ -209,21 +235,25 @@ number
 instructions_block
     : INSTRUCTIONS LBRACE
         {
+            if (ctx->saw_instructions) {
+                TOM_YYLTYPE loc = @1;
+                tom_parse_warning(ctx, loc,
+                    "duplicate instructions block; instructions will be merged");
+            }
+            ctx->saw_instructions = true;
             ensure_sim_ready(ctx);
         }
       instructions
       RBRACE
         {
-            /* Reject an instructions block that ended up empty.  We don't
-             * rely on num_instructions here, because sim_add_instruction()
-             * is responsible for keeping that in sync; instead we track
-             * whether we ever saw an instruction in this block using the
-             * sim_ready flag and a local location copy. */
-            TOM_YYLTYPE loc = @1;
+            // If no new instructions were added within this block, emit a
+            // warning. We rely on sim_add_instruction() to increment the
+            // global num_instructions counter each time we successfully
+            // append an instruction.
             if (ctx->sim->num_instructions == 0) {
-                tom_parse_error(ctx, loc,
-                    "at least one instruction is required in this block");
-                YYERROR;
+                TOM_YYLTYPE loc = @1;
+                tom_parse_warning(ctx, loc,
+                    "empty instructions block; no instructions defined here");
             }
         }
     ;
