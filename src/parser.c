@@ -111,7 +111,7 @@ void tom_parse_error_at(ParseContext *ctx, const struct TOM_YYLTYPE *loc, const 
 	va_end(ap);
 
 	// Primary error line, coloured similar to GCC-style diagnostics.
-	if (ctx && !ctx->quiet && ctx->filename && !loc)
+	if (ctx && !ctx->quiet)
 		fprintf(stderr, "%s:%d: %serror:%s %s%s%s\n", ctx->filename, line,
 			ANSI_BOLD ANSI_RED, ANSI_RESET, ANSI_BOLDWHITE, msg_buf, ANSI_RESET);
 
@@ -178,7 +178,7 @@ void tom_parse_warning_at(ParseContext *ctx, const struct TOM_YYLTYPE *loc, cons
 	vsnprintf(msg_buf, sizeof(msg_buf), fmt, ap);
 	va_end(ap);
 
-	if (ctx && !ctx->quiet && ctx->filename && !loc)
+	if (ctx && !ctx->quiet)
 		fprintf(stderr, "%s:%d: %swarning:%s %s%s%s\n", ctx->filename, line,
 			ANSI_BOLD ANSI_YELLOW, ANSI_RESET, ANSI_BOLDWHITE, msg_buf, ANSI_RESET);
 
